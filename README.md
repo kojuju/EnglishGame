@@ -37,4 +37,4 @@
 - `words.js`：词库数据
 - `app.js`：游戏逻辑和本地存储
 - `start-game.cmd` / `start-game.ps1`：一键启动本地服务并打开浏览器
-- `requirements\`：需求与设计文档目录（包含 `01-requirements.md` ~ `07-wrong-answer-rematch-analysis.md`）
+- `requirements\`：需求与设计文档目录（包含 `01-requirements.md` ~ `09-stage-mode-design.md`）
