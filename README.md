@@ -8,6 +8,14 @@
 
 > 注意：**听写模式**在 `file://` 直接打开时有时也能运行，但不稳定；更推荐通过本地服务器访问（例如 `http://localhost`），以避免浏览器拦截语音能力。
 
+### 推荐的一键启动方式
+
+直接双击 `start-game.cmd`，它会：
+
+1. 在本地启动一个 `http://localhost` 静态服务
+2. 自动打开浏览器进入游戏
+3. 保持当前窗口运行，关闭窗口或按 `Ctrl+C` 可停止服务
+
 ## 当前版本功能
 
 - 首页 + 闯关页 + 结算页
@@ -28,4 +36,5 @@
 - `styles.css`：样式与响应式布局
 - `words.js`：词库数据
 - `app.js`：游戏逻辑和本地存储
+- `start-game.cmd` / `start-game.ps1`：一键启动本地服务并打开浏览器
 - `requirements\`：需求与设计文档目录（包含 `01-requirements.md` ~ `07-wrong-answer-rematch-analysis.md`）
