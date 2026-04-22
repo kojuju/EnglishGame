@@ -102,9 +102,87 @@ button {
 }
 
 .app-shell {
-  width: min(1120px, calc(100% - 32px));
+  width: min(1320px, calc(100% - 32px));
   margin: 0 auto;
   padding: 32px 0 48px;
+}
+
+.app-layout {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.content-shell {
+  min-width: 0;
+}
+
+.sidebar {
+  position: sticky;
+  top: 24px;
+  padding: 24px;
+}
+
+.sidebar-brand h1 {
+  margin: 6px 0 0;
+  font-size: clamp(1.7rem, 3vw, 2.35rem);
+  line-height: 1.15;
+}
+
+.sidebar-copy,
+.sidebar-hint,
+.panel-copy {
+  color: var(--text-soft);
+  line-height: 1.65;
+}
+
+.sidebar-copy {
+  margin: 14px 0 0;
+}
+
+.sidebar-hint,
+.panel-copy {
+  margin: 8px 0 0;
+}
+
+.sidebar-nav {
+  display: grid;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.sidebar-nav-button {
+  width: 100%;
+  display: block;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  color: var(--text-main);
+  font-weight: 700;
+  text-align: left;
+  text-decoration: none;
+  transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.sidebar-nav-button:hover {
+  transform: translateY(-2px);
+}
+
+.sidebar-nav-button.is-active {
+  background: rgba(14, 165, 233, 0.18);
+  border-color: rgba(56, 189, 248, 0.68);
+  color: #e0f2fe;
+  box-shadow: 0 14px 28px rgba(14, 165, 233, 0.14);
+}
+
+.sidebar-meta {
+  margin-top: 22px;
+}
+
+.sidebar-meta .level-chip {
+  display: inline-flex;
 }
 
 .app-header {
@@ -118,6 +196,11 @@ button {
 .app-header h1 {
   margin: 6px 0 0;
   font-size: clamp(1.9rem, 4vw, 3rem);
+}
+
+.page-header h2 {
+  margin: 6px 0 0;
+  font-size: clamp(1.8rem, 3.6vw, 2.8rem);
 }
 
 .header-tip {
@@ -311,6 +394,12 @@ button {
 .tips-panel,
 .review-panel {
   margin-top: 20px;
+}
+
+.stage-overview-panel,
+.stage-list-panel {
+  margin-top: 20px;
+  padding: 24px;
 }
 
 .stat-card,
@@ -642,6 +731,88 @@ button {
   margin: 14px 0 0;
 }
 
+.stage-highlight-grid,
+.stage-list {
+  display: grid;
+  gap: 16px;
+}
+
+.stage-highlight-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.stage-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 18px;
+}
+
+.stage-card {
+  padding: 18px;
+  border-radius: var(--radius-md);
+  background: rgba(30, 41, 59, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+}
+
+.stage-card.is-completed {
+  border-color: rgba(34, 197, 94, 0.38);
+}
+
+.stage-card.is-locked {
+  opacity: 0.76;
+}
+
+.stage-card-header,
+.stage-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stage-card-header {
+  align-items: center;
+}
+
+.stage-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.stage-card-copy {
+  margin: 12px 0 16px;
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+
+.stage-card-meta {
+  margin: 0 0 16px;
+}
+
+.stage-card-meta div {
+  min-width: 0;
+}
+
+.stage-card-meta dt {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.stage-card-meta dd {
+  margin: 8px 0 0;
+  font-weight: 700;
+}
+
+.result-status-text {
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  line-height: 1.4;
+}
+
 .is-hidden {
   display: none;
 }
@@ -749,6 +920,14 @@ button {
 }
 
 @media (max-width: 900px) {
+  .app-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+  }
+
   .app-header,
   .panel-header {
     flex-direction: column;
@@ -767,7 +946,9 @@ button {
   .stats-grid,
   .result-grid,
   .tips-grid,
-  .status-grid {
+  .status-grid,
+  .stage-highlight-grid,
+  .stage-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -789,7 +970,9 @@ button {
   .stats-grid,
   .result-grid,
   .tips-grid,
-  .status-grid {
+  .status-grid,
+  .stage-highlight-grid,
+  .stage-list {
     grid-template-columns: 1fr;
   }
 
@@ -812,6 +995,14 @@ button {
 
   .mode-switch {
     width: 100%;
+  }
+
+  .sidebar {
+    padding: 18px;
+  }
+
+  .sidebar-nav {
+    margin-top: 18px;
   }
 
   .sense-item {

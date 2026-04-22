@@ -1,3 +1,26 @@
+const {
+  STORAGE_KEYS,
+  DEFAULT_LEVEL,
+  DEFAULT_MODE,
+  shuffle,
+  escapeHtml,
+  formatTime,
+  getLevelMeta,
+  getWordsForLevel,
+  getStoredLevel: getSharedStoredLevel,
+  getStoredMode: getSharedStoredMode,
+  persistSelectedLevel: persistSharedSelectedLevel,
+  persistSelectedMode: persistSharedSelectedMode,
+  writeJsonStorage,
+  getSavedStatsMap,
+  getModeStats,
+  getSavedWrongWordMap,
+  getSavedWrongWords,
+  createMeaningQuestion,
+  renderLevelOptions,
+  setBodyScrollLock
+} = window.GameShared;
+
 const GAME_CONFIG = {
   meaning: {
     questionsPerRound: 10,
@@ -17,18 +40,6 @@ const GAME_CONFIG = {
   }
 };
 
-const STORAGE_KEYS = {
-  selectedLevel: "englishGame.selectedLevel",
-  selectedMode: "englishGame.selectedMode",
-  statsByModeAndLevel: "englishGame.statsByModeAndLevel",
-  wrongWordsByModeAndLevel: "englishGame.wrongWordsByModeAndLevel",
-  legacyStatsByLevel: "englishGame.statsByLevel",
-  legacyWrongWordsByLevel: "englishGame.wrongWordsByLevel"
-};
-
-const DEFAULT_LEVEL = "cet4";
-const DEFAULT_MODE = "meaning";
-
 const MODE_OPTIONS = [
   { id: "meaning", label: "词义选择" },
   { id: "dictation", label: "听写" }
@@ -37,8 +48,8 @@ const MODE_OPTIONS = [
 const MODE_META = {
   meaning: {
     homeTitle: "10 题一局，按你的水平练词义",
-    homeCopy: "先在设置里选择英语级别，再开始闯关。系统会按当前级别切换词库，尽量避免超纲。",
-    startLabel: "开始闯关",
+    homeCopy: "先在设置里选择英语级别，再开始练习。系统会按当前级别切换词库，尽量避免超纲。",
+    startLabel: "开始练习",
     primaryStatLabel: "最高分",
     reviewEmpty: "当前级别下还没有错词记录，直接开始第一局吧。",
     tips: [
@@ -46,7 +57,7 @@ const MODE_META = {
       { title: "2. 连击会加分", copy: "连续答对越多，奖励越高，但单次失误不致命。" },
       { title: "3. 错词会回顾", copy: "局后会展示答错的词，帮助你马上复习。" }
     ],
-    gameTitle: "正在闯关",
+    gameTitle: "正在练习",
     promptLabel: "请选择这个英文单词最贴切的中文意思：",
     hint: "键盘也可以按 1 / 2 / 3 / 4 作答",
     defaultFeedback: "答对加分，连续答对还有连击奖励。"
@@ -85,7 +96,6 @@ const state = {
   correctCount: 0,
   answeredCount: 0,
   wrongWords: [],
-  scrollLockY: 0,
   timerId: null,
   feedbackTimeoutId: null,
   lockInput: false,
@@ -177,32 +187,6 @@ const elements = {
   rematchButton: document.getElementById("rematch-button")
 };
 
-function shuffle(items) {
-  const clone = [...items];
-
-  for (let index = clone.length - 1; index > 0; index -= 1) {
-    const randomIndex = Math.floor(Math.random() * (index + 1));
-    [clone[index], clone[randomIndex]] = [clone[randomIndex], clone[index]];
-  }
-
-  return clone;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll("\"", "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function formatTime(totalSeconds) {
-  const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-  const seconds = String(totalSeconds % 60).padStart(2, "0");
-  return `${minutes}:${seconds}`;
-}
-
 function getComboBonus(combo) {
   if (combo >= 8) {
     return 100;
@@ -229,106 +213,24 @@ function getDifficultyLabel(difficulty) {
   return labels[difficulty] || "基础";
 }
 
-function getLevelMeta(levelId) {
-  return LEVEL_OPTIONS.find((option) => option.id === levelId) || LEVEL_OPTIONS.find((option) => option.id === DEFAULT_LEVEL);
-}
-
 function getModeMeta(mode) {
   return MODE_META[mode] || MODE_META[DEFAULT_MODE];
 }
 
-function getWordsForLevel(levelId) {
-  return WORD_BANK.filter((word) => word.level === levelId);
-}
-
-function readJsonStorage(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeJsonStorage(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-function createModeBucket(rawValue) {
-  const value = rawValue && typeof rawValue === "object" ? rawValue : {};
-  return {
-    meaning: value.meaning && typeof value.meaning === "object" ? value.meaning : {},
-    dictation: value.dictation && typeof value.dictation === "object" ? value.dictation : {}
-  };
-}
-
-function getSavedStatsMap() {
-  const saved = readJsonStorage(STORAGE_KEYS.statsByModeAndLevel, null);
-
-  if (saved) {
-    return createModeBucket(saved);
-  }
-
-  const legacy = readJsonStorage(STORAGE_KEYS.legacyStatsByLevel, {});
-  return {
-    meaning: legacy && typeof legacy === "object" ? legacy : {},
-    dictation: {}
-  };
-}
-
-function getModeStats(mode, levelId) {
-  const statsMap = getSavedStatsMap();
-  const defaults = mode === "dictation"
-    ? { bestCorrect: 0, latestAccuracy: 0 }
-    : { bestScore: 0, latestAccuracy: 0 };
-
-  return {
-    ...defaults,
-    ...(statsMap[mode] && statsMap[mode][levelId] ? statsMap[mode][levelId] : {})
-  };
-}
-
-function getSavedWrongWordMap() {
-  const saved = readJsonStorage(STORAGE_KEYS.wrongWordsByModeAndLevel, null);
-
-  if (saved) {
-    return createModeBucket(saved);
-  }
-
-  const legacy = readJsonStorage(STORAGE_KEYS.legacyWrongWordsByLevel, {});
-  return {
-    meaning: legacy && typeof legacy === "object" ? legacy : {},
-    dictation: {}
-  };
-}
-
-function getSavedWrongWords(mode, levelId) {
-  const wrongWordMap = getSavedWrongWordMap();
-  const ids = wrongWordMap[mode] && Array.isArray(wrongWordMap[mode][levelId])
-    ? wrongWordMap[mode][levelId]
-    : [];
-
-  return ids
-    .map((id) => WORD_BANK.find((word) => word.id === id))
-    .filter(Boolean);
-}
-
 function getStoredLevel() {
-  const storedLevel = localStorage.getItem(STORAGE_KEYS.selectedLevel);
-  return LEVEL_OPTIONS.some((option) => option.id === storedLevel) ? storedLevel : DEFAULT_LEVEL;
+  return getSharedStoredLevel();
 }
 
 function getStoredMode() {
-  const storedMode = localStorage.getItem(STORAGE_KEYS.selectedMode);
-  return MODE_OPTIONS.some((option) => option.id === storedMode) ? storedMode : DEFAULT_MODE;
+  return getSharedStoredMode(MODE_OPTIONS);
 }
 
 function persistSelectedLevel() {
-  localStorage.setItem(STORAGE_KEYS.selectedLevel, state.selectedLevel);
+  persistSharedSelectedLevel(state.selectedLevel);
 }
 
 function persistSelectedMode() {
-  localStorage.setItem(STORAGE_KEYS.selectedMode, state.selectedMode);
+  persistSharedSelectedMode(state.selectedMode);
 }
 
 function isSpeechSupported() {
@@ -365,92 +267,6 @@ function resolveSpeechVoice() {
   return voices.find((voice) => /en[-_]gb/i.test(voice.lang) || /en[-\s]?gb/i.test(voice.name))
     || voices.find((voice) => /^en/i.test(voice.lang))
     || null;
-}
-
-function setBodyScrollLock(locked) {
-  if (locked) {
-    state.scrollLockY = window.scrollY || window.pageYOffset || 0;
-    document.body.style.top = `-${state.scrollLockY}px`;
-    document.body.classList.add("modal-open");
-    return;
-  }
-
-  document.body.classList.remove("modal-open");
-  document.body.style.top = "";
-  window.scrollTo(0, state.scrollLockY);
-}
-
-function takeUniqueDistractors(pool, limit) {
-  const picked = [];
-  const usedMeanings = new Set();
-
-  for (const item of pool) {
-    if (usedMeanings.has(item.meaning)) {
-      continue;
-    }
-
-    usedMeanings.add(item.meaning);
-    picked.push(item);
-
-    if (picked.length === limit) {
-      break;
-    }
-  }
-
-  return picked;
-}
-
-function getOptionSignature(options) {
-  return [...options].sort().join("||");
-}
-
-function buildMeaningOptions(word, distractorPool, excludedOptionSignature) {
-  let fallbackOptions = [word.meaning];
-
-  for (let attempt = 0; attempt < 12; attempt += 1) {
-    const sameDifficultyPool = distractorPool.filter((item) => {
-      return item.id !== word.id && item.meaning !== word.meaning && item.difficulty === word.difficulty;
-    });
-
-    const fallbackPool = distractorPool.filter((item) => {
-      return item.id !== word.id && item.meaning !== word.meaning;
-    });
-
-    const distractors = takeUniqueDistractors(
-      shuffle([...sameDifficultyPool, ...fallbackPool]),
-      3
-    );
-    const options = shuffle([word.meaning, ...distractors.map((item) => item.meaning)]);
-
-    if (attempt === 0) {
-      fallbackOptions = options;
-    }
-
-    if (!excludedOptionSignature || getOptionSignature(options) !== excludedOptionSignature) {
-      return options;
-    }
-  }
-
-  return fallbackOptions;
-}
-
-function createMeaningQuestion(word, levelPool, config = {}) {
-  const distractorPool = config.distractorPool || levelPool;
-  const excludedOptionSignature = Array.isArray(config.excludedOptions)
-    ? getOptionSignature(config.excludedOptions)
-    : null;
-  const options = buildMeaningOptions(word, distractorPool, excludedOptionSignature);
-
-  return {
-    id: word.id,
-    word: word.word,
-    meaning: word.meaning,
-    partOfSpeech: word.partOfSpeech,
-    difficulty: word.difficulty,
-    phonetic: word.phonetic,
-    senses: word.senses,
-    options
-  };
 }
 
 function buildMeaningQuestionSet(levelId) {
@@ -1266,7 +1082,7 @@ function openSettingsModal() {
   }
 
   state.pendingLevel = state.selectedLevel;
-  renderLevelOptions();
+  refreshLevelOptions();
   setBodyScrollLock(true);
   elements.settingsModal.classList.remove("is-hidden");
   elements.settingsModal.setAttribute("aria-hidden", "false");
@@ -1287,27 +1103,10 @@ function closeSettingsModal() {
   }
 }
 
-function renderLevelOptions() {
-  elements.levelOptions.innerHTML = "";
-
-  LEVEL_OPTIONS.forEach((option) => {
-    const count = getWordsForLevel(option.id).length;
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `level-option${state.pendingLevel === option.id ? " is-selected" : ""}`;
-    button.dataset.level = option.id;
-    button.innerHTML = `
-      <div>
-        <strong class="level-option-title">${escapeHtml(option.label)}</strong>
-        <span class="level-option-copy">${escapeHtml(option.description)}</span>
-      </div>
-      <span class="level-option-count">${count} 词</span>
-    `;
-    button.addEventListener("click", () => {
-      state.pendingLevel = option.id;
-      renderLevelOptions();
-    });
-    elements.levelOptions.appendChild(button);
+function refreshLevelOptions() {
+  renderLevelOptions(elements.levelOptions, state.pendingLevel, (levelId) => {
+    state.pendingLevel = levelId;
+    refreshLevelOptions();
   });
 }
 
