@@ -3,191 +3,211 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>英语分级闯关小游戏</title>
+  <title>英语分级闯关小游戏 - 练习模式</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div class="app-shell">
-    <header class="app-header">
-      <div>
-        <p class="eyebrow">English Game MVP</p>
-        <h1>英语分级闯关小游戏</h1>
-      </div>
-      <div class="header-actions">
-        <p class="level-chip" id="current-level-chip">当前级别：CET-4</p>
-        <button class="secondary-button compact-button" id="open-settings-button" type="button">设置</button>
-      </div>
-    </header>
-
-    <main class="screen-stack">
-      <section class="screen is-active" id="screen-home" aria-labelledby="home-title">
-        <div class="hero-card card">
-          <p class="hero-badge" id="current-level-badge">当前玩法：词义选择 · 级别：CET-4</p>
-          <div class="mode-switch" id="mode-switch" role="tablist" aria-label="练习模式">
-            <button class="mode-button is-active" id="mode-meaning-button" type="button" data-mode="meaning" role="tab" aria-selected="true">词义选择</button>
-            <button class="mode-button" id="mode-dictation-button" type="button" data-mode="dictation" role="tab" aria-selected="false">听写</button>
-          </div>
-          <h2 id="home-title">10 题一局，按你的水平练词义</h2>
-          <p class="hero-copy" id="home-copy">
-            先在设置里选择英语级别，再开始闯关。系统会按当前级别切换词库，尽量避免超纲。
-          </p>
-          <p class="home-mode-note is-hidden" id="home-mode-note"></p>
-          <div class="action-row">
-            <button class="primary-button" id="start-button" type="button">开始闯关</button>
-            <button class="secondary-button" id="toggle-review-button" type="button">查看最近错词</button>
-          </div>
+    <div class="app-layout">
+      <aside class="sidebar card">
+        <div class="sidebar-brand">
+          <p class="eyebrow">English Game MVP</p>
+          <h1>英语分级闯关小游戏</h1>
+          <p class="sidebar-copy">练习模式负责自由练习与错题再战，闯关模式负责固定关卡和正式进度。</p>
         </div>
 
-        <div class="stats-grid">
-          <article class="stat-card card">
-            <span class="stat-label" id="word-bank-label">词库数量</span>
-            <strong class="stat-value" id="word-bank-size">0</strong>
-          </article>
-          <article class="stat-card card">
-            <span class="stat-label" id="best-score-label">最高分</span>
-            <strong class="stat-value" id="best-score">0</strong>
-          </article>
-          <article class="stat-card card">
-            <span class="stat-label" id="latest-accuracy-label">最近正确率</span>
-            <strong class="stat-value" id="latest-accuracy">0%</strong>
-          </article>
+        <nav class="sidebar-nav" aria-label="主导航">
+          <button class="sidebar-nav-button" id="open-settings-button" type="button">设置</button>
+          <a class="sidebar-nav-button is-active" href="index.html" aria-current="page">练习模式</a>
+          <a class="sidebar-nav-button" href="stage-mode.html">闯关模式</a>
+        </nav>
+
+        <div class="sidebar-meta">
+          <p class="level-chip" id="current-level-chip">当前级别：CET-4</p>
+          <p class="sidebar-hint">切换级别后，两种页面都会使用同一套级别设置。</p>
         </div>
+      </aside>
 
-        <section class="card review-panel is-hidden" id="home-review-panel" aria-labelledby="home-review-title">
-          <div class="panel-header">
-            <h3 id="home-review-title">最近错词</h3>
-            <span class="panel-hint">局后自动记录</span>
+      <div class="content-shell">
+        <header class="app-header page-header">
+          <div>
+            <p class="eyebrow">Practice Mode</p>
+            <h2>自由练习与错题再战</h2>
           </div>
-          <ul class="word-review-list" id="home-review-list"></ul>
-          <p class="empty-state" id="home-review-empty">你最近还没有错词记录，直接开始第一局吧。</p>
-        </section>
+          <p class="header-tip">先选级别，再切换词义选择或听写，系统会按当前级别出题。</p>
+        </header>
 
-        <section class="card tips-panel">
-          <div class="panel-header">
-            <h3>这版怎么玩</h3>
-          </div>
-          <div class="tips-grid">
-            <article>
-              <strong id="tip-title-1">1. 每局 10 题</strong>
-              <p id="tip-copy-1">整局限时，适合反复重开刷熟练度。</p>
-            </article>
-            <article>
-              <strong id="tip-title-2">2. 连击会加分</strong>
-              <p id="tip-copy-2">连续答对越多，奖励越高，但单次失误不致命。</p>
-            </article>
-            <article>
-              <strong id="tip-title-3">3. 错词会回顾</strong>
-              <p id="tip-copy-3">局后会展示答错的词，帮助你马上复习。</p>
-            </article>
-          </div>
-        </section>
-      </section>
-
-      <section class="screen" id="screen-game" aria-labelledby="game-title">
-        <div class="card game-card">
-          <div class="panel-header game-header">
-            <div>
-              <p class="eyebrow">Round</p>
-              <h2 id="game-title">正在闯关</h2>
-            </div>
-            <div class="game-header-actions">
-              <p class="question-progress" id="question-progress">第 1 / 10 题</p>
-              <button class="secondary-button compact-button" id="exit-game-button" type="button">退出本局</button>
-            </div>
-          </div>
-
-          <div class="status-grid">
-            <article class="status-chip">
-              <span id="status-label-1">时间</span>
-              <strong id="timer-value">01:15</strong>
-            </article>
-            <article class="status-chip">
-              <span id="status-label-2">分数</span>
-              <strong id="score-value">0</strong>
-            </article>
-            <article class="status-chip">
-              <span id="status-label-3">生命</span>
-              <strong id="lives-value">3</strong>
-            </article>
-            <article class="status-chip">
-              <span id="status-label-4">连击</span>
-              <strong id="combo-value">0</strong>
-            </article>
-          </div>
-
-          <div class="question-panel" id="question-panel">
-            <div class="question-meta">
-              <span class="tag" id="pos-tag">v.</span>
-              <span class="tag tag-muted" id="difficulty-tag">easy</span>
-            </div>
-            <p class="prompt-label" id="prompt-label">请选择这个英文单词最贴切的中文意思：</p>
-            <h3 class="question-word" id="question-word">abandon</h3>
-            <p class="question-phonetic" id="question-phonetic">/əˈbændən/</p>
-            <p class="question-hint" id="question-hint">键盘也可以按 1 / 2 / 3 / 4 作答</p>
-            <div class="dictation-panel is-hidden" id="dictation-panel">
-              <label class="dictation-label" for="dictation-input">请在三遍播放结束后提交你的拼写：</label>
-              <div class="dictation-input-row">
-                <input class="dictation-input" id="dictation-input" type="text" inputmode="latin" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="输入你听到的英文单词">
-                <button class="primary-button" id="submit-dictation-button" type="button">提交拼写</button>
+        <main class="screen-stack">
+          <section class="screen is-active" id="screen-home" aria-labelledby="home-title">
+            <div class="hero-card card">
+              <p class="hero-badge" id="current-level-badge">当前玩法：词义选择 · 级别：CET-4</p>
+              <div class="mode-switch" id="mode-switch" role="tablist" aria-label="练习模式">
+                <button class="mode-button is-active" id="mode-meaning-button" type="button" data-mode="meaning" role="tab" aria-selected="true">词义选择</button>
+                <button class="mode-button" id="mode-dictation-button" type="button" data-mode="dictation" role="tab" aria-selected="false">听写</button>
               </div>
-              <p class="dictation-status" id="dictation-status">准备播放</p>
-              <p class="dictation-support-note is-hidden" id="dictation-support-note">当前浏览器不支持语音播放，暂时无法使用听写模式。</p>
+              <h2 id="home-title">10 题一局，按你的水平练词义</h2>
+              <p class="hero-copy" id="home-copy">
+                先在设置里选择英语级别，再开始练习。系统会按当前级别切换词库，尽量避免超纲。
+              </p>
+              <p class="home-mode-note is-hidden" id="home-mode-note"></p>
+              <div class="action-row">
+                <button class="primary-button" id="start-button" type="button">开始练习</button>
+                <button class="secondary-button" id="toggle-review-button" type="button">查看最近错词</button>
+              </div>
             </div>
-          </div>
 
-          <div class="options-grid" id="options-grid" role="list"></div>
-
-          <div class="feedback-box" id="feedback-box" aria-live="polite"></div>
-        </div>
-      </section>
-
-      <section class="screen" id="screen-result" aria-labelledby="result-title">
-        <div class="card result-card">
-          <div class="panel-header">
-            <div>
-              <p class="eyebrow">Result</p>
-              <h2 id="result-title">本局结算</h2>
+            <div class="stats-grid">
+              <article class="stat-card card">
+                <span class="stat-label" id="word-bank-label">词库数量</span>
+                <strong class="stat-value" id="word-bank-size">0</strong>
+              </article>
+              <article class="stat-card card">
+                <span class="stat-label" id="best-score-label">最高分</span>
+                <strong class="stat-value" id="best-score">0</strong>
+              </article>
+              <article class="stat-card card">
+                <span class="stat-label" id="latest-accuracy-label">最近正确率</span>
+                <strong class="stat-value" id="latest-accuracy">0%</strong>
+              </article>
             </div>
-          </div>
 
-          <div class="result-grid">
-            <article class="stat-card result-stat">
-              <span class="stat-label" id="result-label-1">最终得分</span>
-              <strong class="stat-value" id="result-score">0</strong>
-            </article>
-            <article class="stat-card result-stat">
-              <span class="stat-label" id="result-label-2">答对题数</span>
-              <strong class="stat-value" id="result-correct">0 / 0</strong>
-            </article>
-            <article class="stat-card result-stat">
-              <span class="stat-label" id="result-label-3">正确率</span>
-              <strong class="stat-value" id="result-accuracy">0%</strong>
-            </article>
-            <article class="stat-card result-stat">
-              <span class="stat-label" id="result-label-4">最高连击</span>
-              <strong class="stat-value" id="result-best-combo">0</strong>
-            </article>
-          </div>
+            <section class="card review-panel is-hidden" id="home-review-panel" aria-labelledby="home-review-title">
+              <div class="panel-header">
+                <h3 id="home-review-title">最近错词</h3>
+                <span class="panel-hint">局后自动记录</span>
+              </div>
+              <ul class="word-review-list" id="home-review-list"></ul>
+              <p class="empty-state" id="home-review-empty">你最近还没有错词记录，直接开始第一局吧。</p>
+            </section>
 
-          <p class="summary-text" id="result-summary">继续保持，你已经在建立语感了。</p>
-
-          <section class="review-panel result-review">
-            <div class="panel-header">
-              <h3>本局错词回顾</h3>
-              <span class="panel-hint" id="wrong-count">0 个</span>
-            </div>
-            <ul class="word-review-list" id="result-review-list"></ul>
-            <p class="empty-state" id="result-review-empty">这一局没有错词，表现不错。</p>
+            <section class="card tips-panel">
+              <div class="panel-header">
+                <h3>这版怎么玩</h3>
+              </div>
+              <div class="tips-grid">
+                <article>
+                  <strong id="tip-title-1">1. 每局 10 题</strong>
+                  <p id="tip-copy-1">整局限时，适合反复重开刷熟练度。</p>
+                </article>
+                <article>
+                  <strong id="tip-title-2">2. 连击会加分</strong>
+                  <p id="tip-copy-2">连续答对越多，奖励越高，但单次失误不致命。</p>
+                </article>
+                <article>
+                  <strong id="tip-title-3">3. 错词会回顾</strong>
+                  <p id="tip-copy-3">局后会展示答错的词，帮助你马上复习。</p>
+                </article>
+              </div>
+            </section>
           </section>
 
-          <div class="action-row">
-            <button class="primary-button" id="play-again-button" type="button">再来一局</button>
-            <button class="secondary-button is-hidden" id="rematch-button" type="button">错题再战</button>
-            <button class="secondary-button" id="back-home-button" type="button">返回首页</button>
-          </div>
-        </div>
-      </section>
-    </main>
+          <section class="screen" id="screen-game" aria-labelledby="game-title">
+            <div class="card game-card">
+              <div class="panel-header game-header">
+                <div>
+                  <p class="eyebrow">Practice Run</p>
+                  <h2 id="game-title">正在练习</h2>
+                </div>
+                <div class="game-header-actions">
+                  <p class="question-progress" id="question-progress">第 1 / 10 题</p>
+                  <button class="secondary-button compact-button" id="exit-game-button" type="button">退出本局</button>
+                </div>
+              </div>
+
+              <div class="status-grid">
+                <article class="status-chip">
+                  <span id="status-label-1">时间</span>
+                  <strong id="timer-value">01:15</strong>
+                </article>
+                <article class="status-chip">
+                  <span id="status-label-2">分数</span>
+                  <strong id="score-value">0</strong>
+                </article>
+                <article class="status-chip">
+                  <span id="status-label-3">生命</span>
+                  <strong id="lives-value">3</strong>
+                </article>
+                <article class="status-chip">
+                  <span id="status-label-4">连击</span>
+                  <strong id="combo-value">0</strong>
+                </article>
+              </div>
+
+              <div class="question-panel" id="question-panel">
+                <div class="question-meta">
+                  <span class="tag" id="pos-tag">v.</span>
+                  <span class="tag tag-muted" id="difficulty-tag">easy</span>
+                </div>
+                <p class="prompt-label" id="prompt-label">请选择这个英文单词最贴切的中文意思：</p>
+                <h3 class="question-word" id="question-word">abandon</h3>
+                <p class="question-phonetic" id="question-phonetic">/əˈbændən/</p>
+                <p class="question-hint" id="question-hint">键盘也可以按 1 / 2 / 3 / 4 作答</p>
+                <div class="dictation-panel is-hidden" id="dictation-panel">
+                  <label class="dictation-label" for="dictation-input">请在三遍播放结束后提交你的拼写：</label>
+                  <div class="dictation-input-row">
+                    <input class="dictation-input" id="dictation-input" type="text" inputmode="latin" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="输入你听到的英文单词">
+                    <button class="primary-button" id="submit-dictation-button" type="button">提交拼写</button>
+                  </div>
+                  <p class="dictation-status" id="dictation-status">准备播放</p>
+                  <p class="dictation-support-note is-hidden" id="dictation-support-note">当前浏览器不支持语音播放，暂时无法使用听写模式。</p>
+                </div>
+              </div>
+
+              <div class="options-grid" id="options-grid" role="list"></div>
+
+              <div class="feedback-box" id="feedback-box" aria-live="polite"></div>
+            </div>
+          </section>
+
+          <section class="screen" id="screen-result" aria-labelledby="result-title">
+            <div class="card result-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Practice Result</p>
+                  <h2 id="result-title">本局结算</h2>
+                </div>
+              </div>
+
+              <div class="result-grid">
+                <article class="stat-card result-stat">
+                  <span class="stat-label" id="result-label-1">最终得分</span>
+                  <strong class="stat-value" id="result-score">0</strong>
+                </article>
+                <article class="stat-card result-stat">
+                  <span class="stat-label" id="result-label-2">答对题数</span>
+                  <strong class="stat-value" id="result-correct">0 / 0</strong>
+                </article>
+                <article class="stat-card result-stat">
+                  <span class="stat-label" id="result-label-3">正确率</span>
+                  <strong class="stat-value" id="result-accuracy">0%</strong>
+                </article>
+                <article class="stat-card result-stat">
+                  <span class="stat-label" id="result-label-4">最高连击</span>
+                  <strong class="stat-value" id="result-best-combo">0</strong>
+                </article>
+              </div>
+
+              <p class="summary-text" id="result-summary">继续保持，你已经在建立语感了。</p>
+
+              <section class="review-panel result-review">
+                <div class="panel-header">
+                  <h3>本局错词回顾</h3>
+                  <span class="panel-hint" id="wrong-count">0 个</span>
+                </div>
+                <ul class="word-review-list" id="result-review-list"></ul>
+                <p class="empty-state" id="result-review-empty">这一局没有错词，表现不错。</p>
+              </section>
+
+              <div class="action-row">
+                <button class="primary-button" id="play-again-button" type="button">再来一局</button>
+                <button class="secondary-button is-hidden" id="rematch-button" type="button">错题再战</button>
+                <button class="secondary-button" id="back-home-button" type="button">返回首页</button>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
   </div>
 
   <section class="modal-backdrop is-hidden" id="settings-modal" aria-hidden="true">
@@ -200,7 +220,7 @@
         <button class="icon-button" id="close-settings-button" type="button" aria-label="关闭设置">×</button>
       </div>
       <p class="modal-copy">
-        级别切换后，两种玩法都会切换到对应级别；统计和错词记录会按“玩法 + 级别”分别显示。
+        级别切换后，练习模式和闯关模式都会切换到对应级别；练习统计和闯关进度会分别保留。
       </p>
       <div class="level-options" id="level-options"></div>
       <div class="action-row modal-actions">
@@ -212,6 +232,7 @@
 
   <script src="generated-word-bank.js"></script>
   <script src="words.js"></script>
+  <script src="shared-game.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

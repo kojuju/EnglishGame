@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>英语分级闯关小游戏 - 闯关模式</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <div class="app-layout">
+      <aside class="sidebar card">
+        <div class="sidebar-brand">
+          <p class="eyebrow">English Game MVP</p>
+          <h1>英语分级闯关小游戏</h1>
+          <p class="sidebar-copy">左侧切模式，右侧继续当前级别的正式闯关进度。</p>
+        </div>
+
+        <nav class="sidebar-nav" aria-label="主导航">
+          <button class="sidebar-nav-button" id="open-settings-button" type="button">设置</button>
+          <a class="sidebar-nav-button" href="index.html">练习模式</a>
+          <a class="sidebar-nav-button is-active" href="stage-mode.html" aria-current="page">闯关模式</a>
+        </nav>
+
+        <div class="sidebar-meta">
+          <p class="level-chip" id="current-level-chip">当前级别：CET-4</p>
+          <p class="sidebar-hint">设置中的级别在练习模式和闯关模式之间全局共享。</p>
+        </div>
+      </aside>
+
+      <div class="content-shell">
+        <header class="app-header page-header">
+          <div>
+            <p class="eyebrow">Stage Mode</p>
+            <h2>固定关卡闯关</h2>
+          </div>
+          <p class="header-tip" id="page-tip">每关固定 10 词，过关后解锁下一关。</p>
+        </header>
+
+        <main class="screen-stack">
+          <section class="screen is-active" id="screen-home" aria-labelledby="stage-home-title">
+            <div class="hero-card card">
+              <p class="hero-badge" id="current-level-badge">当前玩法：词义闯关 · 级别：CET-4</p>
+              <h3 id="stage-home-title">每关固定 10 词，按级别一路解锁</h3>
+              <p class="hero-copy">
+                第一阶段只开放词义闯关。你需要在 75 秒内完成 10 题，并至少答对 9 题，才能解锁下一关。
+              </p>
+              <div class="action-row">
+                <button class="primary-button" id="continue-stage-button" type="button">挑战当前关</button>
+                <button class="secondary-button" id="scroll-stage-list-button" type="button">查看关卡列表</button>
+              </div>
+            </div>
+
+            <div class="stats-grid">
+              <article class="stat-card card">
+                <span class="stat-label">当前玩法</span>
+                <strong class="stat-value">词义闯关</strong>
+              </article>
+              <article class="stat-card card">
+                <span class="stat-label">当前解锁</span>
+                <strong class="stat-value" id="unlocked-stage-value">第 1 关</strong>
+              </article>
+              <article class="stat-card card">
+                <span class="stat-label">已通关</span>
+                <strong class="stat-value" id="completed-stage-count">0 / 0</strong>
+              </article>
+            </div>
+
+            <section class="card stage-overview-panel">
+              <div class="panel-header">
+                <div>
+                  <h3>本级别闯关概览</h3>
+                  <p class="panel-copy" id="stage-overview-copy">准备从第 1 关开始。</p>
+                </div>
+              </div>
+              <div class="stage-highlight-grid">
+                <article class="stat-card">
+                  <span class="stat-label">推荐挑战</span>
+                  <strong class="stat-value" id="recommended-stage-value">第 1 关</strong>
+                </article>
+                <article class="stat-card">
+                  <span class="stat-label">最近进入</span>
+                  <strong class="stat-value" id="last-played-stage-value">未开始</strong>
+                </article>
+                <article class="stat-card">
+                  <span class="stat-label">总关卡数</span>
+                  <strong class="stat-value" id="total-stage-count">0</strong>
+                </article>
+              </div>
+            </section>
+
+            <section class="card stage-list-panel" id="stage-list-section" aria-labelledby="stage-list-title">
+              <div class="panel-header">
+                <div>
+                  <h3 id="stage-list-title">关卡列表</h3>
+                  <p class="panel-copy">已通关关卡可重玩，未解锁关卡不可进入。</p>
+                </div>
+              </div>
+              <div class="stage-list" id="stage-list"></div>
+              <p class="empty-state is-hidden" id="stage-list-empty">当前级别暂时没有可用关卡。</p>
+            </section>
+          </section>
+
+          <section class="screen" id="screen-game" aria-labelledby="game-title">
+            <div class="card game-card">
+              <div class="panel-header game-header">
+                <div>
+                  <p class="eyebrow">Stage Run</p>
+                  <h2 id="game-title">第 1 关</h2>
+                </div>
+                <div class="game-header-actions">
+                  <p class="question-progress" id="question-progress">第 1 / 10 题</p>
+                  <button class="secondary-button compact-button" id="exit-game-button" type="button">退出本局</button>
+                </div>
+              </div>
+
+              <div class="status-grid">
+                <article class="status-chip">
+                  <span>时间</span>
+                  <strong id="timer-value">01:15</strong>
+                </article>
+                <article class="status-chip">
+                  <span>分数</span>
+                  <strong id="score-value">0</strong>
+                </article>
+                <article class="status-chip">
+                  <span>生命</span>
+                  <strong id="lives-value">2</strong>
+                </article>
+                <article class="status-chip">
+                  <span>正确率</span>
+                  <strong id="accuracy-value">0%</strong>
+                </article>
+              </div>
+
+              <div class="question-panel">
+                <div class="question-meta">
+                  <span class="tag" id="pos-tag">v.</span>
+                  <span class="tag tag-muted" id="difficulty-tag">easy</span>
+                </div>
+                <p class="prompt-label">请选择这个英文单词最贴切的中文意思：</p>
+                <h3 class="question-word" id="question-word">abandon</h3>
+                <p class="question-phonetic" id="question-phonetic">/əˈbændən/</p>
+                <p class="question-hint">键盘也可以按 1 / 2 / 3 / 4 作答</p>
+              </div>
+
+              <div class="options-grid" id="options-grid" role="list"></div>
+              <div class="feedback-box" id="feedback-box" aria-live="polite"></div>
+            </div>
+          </section>
+
+          <section class="screen" id="screen-result" aria-labelledby="result-title">
+            <div class="card result-card">
+              <div class="panel-header">
+                <div>
+                  <p class="eyebrow">Stage Result</p>
+                  <h2 id="result-title">第 1 关结算</h2>
+                </div>
+              </div>
+
+              <div class="result-grid">
+                <article class="stat-card result-stat">
+                  <span class="stat-label">是否通关</span>
+                  <strong class="stat-value" id="result-pass-status">失败</strong>
+                </article>
+                <article class="stat-card result-stat">
+                  <span class="stat-label">最终得分</span>
+                  <strong class="stat-value" id="result-score">0</strong>
+                </article>
+                <article class="stat-card result-stat">
+                  <span class="stat-label">正确率</span>
+                  <strong class="stat-value" id="result-accuracy">0%</strong>
+                </article>
+                <article class="stat-card result-stat">
+                  <span class="stat-label">答对题数</span>
+                  <strong class="stat-value" id="result-correct">0 / 10</strong>
+                </article>
+                <article class="stat-card result-stat">
+                  <span class="stat-label">失败原因</span>
+                  <strong class="stat-value result-status-text" id="result-failure-reason">正确率不足</strong>
+                </article>
+                <article class="stat-card result-stat">
+                  <span class="stat-label">下一关状态</span>
+                  <strong class="stat-value result-status-text" id="result-unlock-status">未解锁</strong>
+                </article>
+                <article class="stat-card result-stat">
+                  <span class="stat-label">当前关最高分</span>
+                  <strong class="stat-value" id="result-best-score">0</strong>
+                </article>
+              </div>
+
+              <p class="summary-text" id="result-summary">保持节奏，再试一次这一关会更稳。</p>
+
+              <div class="action-row">
+                <button class="primary-button is-hidden" id="next-stage-button" type="button">进入下一关</button>
+                <button class="primary-button" id="retry-stage-button" type="button">重试本关</button>
+                <button class="secondary-button" id="back-home-button" type="button">返回闯关首页</button>
+              </div>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <section class="modal-backdrop is-hidden" id="settings-modal" aria-hidden="true">
+    <div class="modal-card card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Settings</p>
+          <h2 id="settings-title">选择英语级别</h2>
+        </div>
+        <button class="icon-button" id="close-settings-button" type="button" aria-label="关闭设置">×</button>
+      </div>
+      <p class="modal-copy">
+        级别切换后，练习模式和闯关模式都会切换到对应级别；练习统计与闯关进度仍会分别保存。
+      </p>
+      <div class="level-options" id="level-options"></div>
+      <div class="action-row modal-actions">
+        <button class="primary-button" id="save-settings-button" type="button">保存设置</button>
+        <button class="secondary-button" id="cancel-settings-button" type="button">取消</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="generated-word-bank.js"></script>
+  <script src="words.js"></script>
+  <script src="shared-game.js"></script>
+  <script src="stage-word-bank.js"></script>
+  <script src="stage-mode.js"></script>
+</body>
+</html>
