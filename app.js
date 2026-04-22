@@ -10,9 +10,10 @@ const GAME_CONFIG = {
     wordsPerRound: 20,
     playbackRepeats: 3,
     playbackGapMs: 5000,
+    submitWindowSeconds: 30,
     speechLang: "en-GB",
     speechRate: 0.82,
-    feedbackDelayMs: 1200
+    feedbackDelayMs: 10000
   }
 };
 
@@ -91,6 +92,8 @@ const state = {
   dictationPlaybackCount: 0,
   dictationPlaybackStatus: "idle",
   dictationReadyForSubmit: false,
+  dictationSubmitSecondsLeft: GAME_CONFIG.dictation.submitWindowSeconds,
+  dictationSubmitTimerId: null,
   dictationDelayId: null,
   speechRunId: 0
 };
@@ -134,6 +137,7 @@ const elements = {
   tipCopy3: document.getElementById("tip-copy-3"),
   gameTitle: document.getElementById("game-title"),
   questionProgress: document.getElementById("question-progress"),
+  exitGameButton: document.getElementById("exit-game-button"),
   statusLabel1: document.getElementById("status-label-1"),
   timerValue: document.getElementById("timer-value"),
   statusLabel2: document.getElementById("status-label-2"),
@@ -579,11 +583,11 @@ function getDictationPlaybackStatusText() {
   }
 
   if (state.dictationPlaybackStatus === "ready") {
-    return "三遍播放已结束，现在可以提交答案。";
+    return `三遍播放已结束，请在 ${state.dictationSubmitSecondsLeft} 秒内提交答案。`;
   }
 
   if (state.dictationPlaybackStatus === "error") {
-    return "语音播放失败，请返回首页后重试。";
+    return `语音播放失败，请在 ${state.dictationSubmitSecondsLeft} 秒内决定是否提交。`;
   }
 
   return "准备播放，请稍候。";
@@ -603,8 +607,10 @@ function updateDictationControls() {
 function updateStatusBar() {
   if (state.selectedMode === "dictation") {
     elements.questionProgress.textContent = `第 ${state.currentIndex + 1} / ${state.questions.length} 词`;
-    elements.statusLabel1.textContent = "进度";
-    elements.timerValue.textContent = `${state.currentIndex + 1} / ${state.questions.length}`;
+    elements.statusLabel1.textContent = "提交倒计时";
+    elements.timerValue.textContent = state.dictationReadyForSubmit || state.lockInput
+      ? formatTime(Math.max(state.dictationSubmitSecondsLeft, 0))
+      : "--:--";
     elements.statusLabel2.textContent = "播放";
     elements.scoreValue.textContent = state.dictationPlaybackStatus === "error"
       ? "异常"
@@ -682,6 +688,7 @@ function renderDictationQuestion() {
   state.dictationPlaybackCount = 0;
   state.dictationPlaybackStatus = "idle";
   state.dictationReadyForSubmit = false;
+  state.dictationSubmitSecondsLeft = GAME_CONFIG.dictation.submitWindowSeconds;
 
   clearFeedback();
   updateStatusBar();
@@ -754,6 +761,13 @@ function stopTimer() {
   }
 }
 
+function stopDictationSubmitTimer() {
+  if (state.dictationSubmitTimerId) {
+    window.clearInterval(state.dictationSubmitTimerId);
+    state.dictationSubmitTimerId = null;
+  }
+}
+
 function stopDictationPlayback() {
   state.speechRunId += 1;
   state.dictationReadyForSubmit = false;
@@ -770,8 +784,34 @@ function stopDictationPlayback() {
 
 function stopActiveRoundEffects() {
   stopTimer();
+  stopDictationSubmitTimer();
   clearFeedbackTimeout();
   stopDictationPlayback();
+}
+
+function startDictationSubmitCountdown() {
+  stopDictationSubmitTimer();
+  state.dictationSubmitSecondsLeft = GAME_CONFIG.dictation.submitWindowSeconds;
+  updateStatusBar();
+
+  state.dictationSubmitTimerId = window.setInterval(() => {
+    if (state.roundFinished || state.selectedMode !== "dictation") {
+      stopDictationSubmitTimer();
+      return;
+    }
+
+    state.dictationSubmitSecondsLeft -= 1;
+
+    if (state.dictationSubmitSecondsLeft <= 0) {
+      state.dictationSubmitSecondsLeft = 0;
+      stopDictationSubmitTimer();
+      updateStatusBar();
+      handleDictationSubmit({ auto: true });
+      return;
+    }
+
+    updateStatusBar();
+  }, 1000);
 }
 
 function moveToNextMeaningQuestion() {
@@ -844,7 +884,7 @@ function normalizeWordAnswer(value) {
   return value.trim().toLowerCase();
 }
 
-function handleDictationSubmit() {
+function handleDictationSubmit({ auto = false } = {}) {
   if (state.selectedMode !== "dictation" || state.lockInput || state.roundFinished || !state.dictationReadyForSubmit) {
     return;
   }
@@ -854,17 +894,24 @@ function handleDictationSubmit() {
   const trimmedAnswer = userAnswer.trim();
   const isCorrect = normalizeWordAnswer(userAnswer) === normalizeWordAnswer(currentQuestion.word);
 
+  stopDictationSubmitTimer();
   state.lockInput = true;
   state.answeredCount += 1;
+  state.dictationReadyForSubmit = false;
+  state.dictationSubmitSecondsLeft = 0;
 
   if (isCorrect) {
     state.correctCount += 1;
     elements.feedbackBox.className = "feedback-box is-success";
-    elements.feedbackBox.textContent = `答对了！你写出了 ${currentQuestion.word}`;
+    elements.feedbackBox.textContent = auto
+      ? `30 秒已到，系统已自动提交。你的答案正确：${currentQuestion.word} = ${currentQuestion.meaning}`
+      : `答对了！${currentQuestion.word} = ${currentQuestion.meaning}`;
   } else {
     addWrongWord(currentQuestion, { userAnswer: trimmedAnswer || "（未填写）" });
     elements.feedbackBox.className = "feedback-box is-error";
-    elements.feedbackBox.textContent = `拼写不对。正确答案是 ${currentQuestion.word}`;
+    elements.feedbackBox.textContent = auto
+      ? `30 秒已到，系统已自动提交。正确答案是 ${currentQuestion.word}（${currentQuestion.meaning}）`
+      : `拼写不对。正确答案是 ${currentQuestion.word}（${currentQuestion.meaning}）`;
   }
 
   elements.dictationInput.disabled = true;
@@ -1031,6 +1078,7 @@ function prepareRoundState(items) {
   state.dictationPlaybackCount = 0;
   state.dictationPlaybackStatus = "idle";
   state.dictationReadyForSubmit = false;
+  state.dictationSubmitSecondsLeft = GAME_CONFIG.dictation.submitWindowSeconds;
 }
 
 function startGame() {
@@ -1166,7 +1214,7 @@ function speakWord(word, runId) {
     if (state.dictationPlaybackCount >= GAME_CONFIG.dictation.playbackRepeats) {
       state.dictationPlaybackStatus = "ready";
       state.dictationReadyForSubmit = true;
-      updateStatusBar();
+      startDictationSubmitCountdown();
       return;
     }
 
@@ -1186,8 +1234,8 @@ function speakWord(word, runId) {
     state.dictationPlaybackStatus = "error";
     state.dictationReadyForSubmit = true;
     elements.feedbackBox.className = "feedback-box is-error";
-    elements.feedbackBox.textContent = "语音播放失败，请完成当前词后返回首页重试。";
-    updateStatusBar();
+    elements.feedbackBox.textContent = "语音播放失败，请在 30 秒内决定是否提交；超时后会自动判定。";
+    startDictationSubmitCountdown();
   };
 
   window.speechSynthesis.cancel();
@@ -1196,10 +1244,12 @@ function speakWord(word, runId) {
 
 function startDictationPlayback(word) {
   stopDictationPlayback();
+  stopDictationSubmitTimer();
   state.speechRunId += 1;
   state.dictationPlaybackCount = 0;
   state.dictationPlaybackStatus = "idle";
   state.dictationReadyForSubmit = false;
+  state.dictationSubmitSecondsLeft = GAME_CONFIG.dictation.submitWindowSeconds;
   updateStatusBar();
 
   if (!isSpeechSupported()) {
@@ -1221,6 +1271,7 @@ function bindEvents() {
   elements.startButton.addEventListener("click", startGame);
   elements.playAgainButton.addEventListener("click", startGame);
   elements.backHomeButton.addEventListener("click", goHome);
+  elements.exitGameButton.addEventListener("click", goHome);
   elements.toggleReviewButton.addEventListener("click", toggleHomeReview);
   elements.openSettingsButton.addEventListener("click", openSettingsModal);
   elements.closeSettingsButton.addEventListener("click", closeSettingsModal);
