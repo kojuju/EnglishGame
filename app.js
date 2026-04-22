@@ -74,6 +74,7 @@ const state = {
   selectedLevel: DEFAULT_LEVEL,
   pendingLevel: DEFAULT_LEVEL,
   selectedMode: DEFAULT_MODE,
+  roundKind: "normal",
   questions: [],
   currentIndex: 0,
   score: 0,
@@ -172,7 +173,8 @@ const elements = {
   resultSummary: document.getElementById("result-summary"),
   resultReviewList: document.getElementById("result-review-list"),
   resultReviewEmpty: document.getElementById("result-review-empty"),
-  wrongCount: document.getElementById("wrong-count")
+  wrongCount: document.getElementById("wrong-count"),
+  rematchButton: document.getElementById("rematch-button")
 };
 
 function shuffle(items) {
@@ -333,6 +335,26 @@ function isSpeechSupported() {
   return typeof window.SpeechSynthesisUtterance !== "undefined" && "speechSynthesis" in window;
 }
 
+function getDictationWarning() {
+  if (window.location.protocol === "file:") {
+    return "当前是用 file:// 直接打开页面，听写模式可能受浏览器限制；建议改用 http://localhost 方式访问。";
+  }
+
+  return "";
+}
+
+function getDictationUnavailableReason() {
+  if (!isSpeechSupported()) {
+    return "当前浏览器不支持语音播放，听写模式暂不可用，请改用支持 SpeechSynthesis 的浏览器。";
+  }
+
+  return "";
+}
+
+function isDictationAvailable() {
+  return getDictationUnavailableReason() === "";
+}
+
 function resolveSpeechVoice() {
   if (!isSpeechSupported()) {
     return null;
@@ -378,19 +400,46 @@ function takeUniqueDistractors(pool, limit) {
   return picked;
 }
 
-function createMeaningQuestion(word, levelPool) {
-  const sameDifficultyPool = levelPool.filter((item) => {
-    return item.id !== word.id && item.meaning !== word.meaning && item.difficulty === word.difficulty;
-  });
+function getOptionSignature(options) {
+  return [...options].sort().join("||");
+}
 
-  const fallbackPool = levelPool.filter((item) => {
-    return item.id !== word.id && item.meaning !== word.meaning;
-  });
+function buildMeaningOptions(word, distractorPool, excludedOptionSignature) {
+  let fallbackOptions = [word.meaning];
 
-  const distractors = takeUniqueDistractors(
-    shuffle([...sameDifficultyPool, ...fallbackPool]),
-    3
-  );
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const sameDifficultyPool = distractorPool.filter((item) => {
+      return item.id !== word.id && item.meaning !== word.meaning && item.difficulty === word.difficulty;
+    });
+
+    const fallbackPool = distractorPool.filter((item) => {
+      return item.id !== word.id && item.meaning !== word.meaning;
+    });
+
+    const distractors = takeUniqueDistractors(
+      shuffle([...sameDifficultyPool, ...fallbackPool]),
+      3
+    );
+    const options = shuffle([word.meaning, ...distractors.map((item) => item.meaning)]);
+
+    if (attempt === 0) {
+      fallbackOptions = options;
+    }
+
+    if (!excludedOptionSignature || getOptionSignature(options) !== excludedOptionSignature) {
+      return options;
+    }
+  }
+
+  return fallbackOptions;
+}
+
+function createMeaningQuestion(word, levelPool, config = {}) {
+  const distractorPool = config.distractorPool || levelPool;
+  const excludedOptionSignature = Array.isArray(config.excludedOptions)
+    ? getOptionSignature(config.excludedOptions)
+    : null;
+  const options = buildMeaningOptions(word, distractorPool, excludedOptionSignature);
 
   return {
     id: word.id,
@@ -400,7 +449,7 @@ function createMeaningQuestion(word, levelPool) {
     difficulty: word.difficulty,
     phonetic: word.phonetic,
     senses: word.senses,
-    options: shuffle([word.meaning, ...distractors.map((item) => item.meaning)])
+    options
   };
 }
 
@@ -411,6 +460,17 @@ function buildMeaningQuestionSet(levelId) {
   return shuffle(levelWords)
     .slice(0, roundSize)
     .map((word) => createMeaningQuestion(word, levelWords));
+}
+
+function buildMeaningRematchQuestionSet(words, levelId) {
+  const levelWords = getWordsForLevel(levelId);
+
+  return shuffle(words).map((word) => {
+    return createMeaningQuestion(word, levelWords, {
+      distractorPool: levelWords,
+      excludedOptions: word.sourceOptions
+    });
+  });
 }
 
 function buildDictationRound(levelId) {
@@ -428,6 +488,18 @@ function buildDictationRound(levelId) {
       phonetic: word.phonetic,
       senses: word.senses
     }));
+}
+
+function buildDictationRematchRound(words) {
+  return shuffle(words).map((word) => ({
+    id: word.id,
+    word: word.word,
+    meaning: word.meaning,
+    partOfSpeech: word.partOfSpeech,
+    difficulty: word.difficulty,
+    phonetic: word.phonetic,
+    senses: word.senses
+  }));
 }
 
 function updateHeaderState() {
@@ -470,7 +542,8 @@ function updateTips(meta) {
 
 function updateHomeModeContent() {
   const meta = getModeMeta(state.selectedMode);
-  const dictationSupported = isSpeechSupported();
+  const dictationUnavailableReason = getDictationUnavailableReason();
+  const dictationWarning = getDictationWarning();
 
   renderModeButtons();
   updateLevelLabels();
@@ -482,10 +555,10 @@ function updateHomeModeContent() {
   elements.bestScoreLabel.textContent = meta.primaryStatLabel;
   elements.latestAccuracyLabel.textContent = "最近正确率";
 
-  if (state.selectedMode === "dictation" && !dictationSupported) {
-    elements.homeModeNote.textContent = "当前浏览器不支持语音播放，听写模式暂不可用，请改用支持 SpeechSynthesis 的浏览器。";
+  if (state.selectedMode === "dictation" && (dictationUnavailableReason || dictationWarning)) {
+    elements.homeModeNote.textContent = dictationUnavailableReason || dictationWarning;
     elements.homeModeNote.classList.remove("is-hidden");
-    elements.startButton.disabled = true;
+    elements.startButton.disabled = Boolean(dictationUnavailableReason);
   } else {
     elements.homeModeNote.textContent = "";
     elements.homeModeNote.classList.add("is-hidden");
@@ -570,8 +643,10 @@ function getDictationPlaybackTag() {
 }
 
 function getDictationPlaybackStatusText() {
-  if (!isSpeechSupported()) {
-    return "当前浏览器不支持语音播放，无法进入听写流程。";
+  const dictationUnavailableReason = getDictationUnavailableReason();
+
+  if (dictationUnavailableReason) {
+    return dictationUnavailableReason;
   }
 
   if (state.dictationPlaybackStatus === "speaking") {
@@ -594,14 +669,16 @@ function getDictationPlaybackStatusText() {
 }
 
 function updateDictationControls() {
-  const shouldDisableInput = state.lockInput || state.roundFinished || !isSpeechSupported();
+  const shouldDisableInput = state.lockInput || state.roundFinished || !isDictationAvailable();
   const shouldDisableSubmit = shouldDisableInput || !state.dictationReadyForSubmit;
 
   elements.difficultyTag.textContent = getDictationPlaybackTag();
   elements.dictationStatus.textContent = getDictationPlaybackStatusText();
   elements.dictationInput.disabled = shouldDisableInput;
   elements.submitDictationButton.disabled = shouldDisableSubmit;
-  elements.dictationSupportNote.classList.toggle("is-hidden", isSpeechSupported());
+  const dictationMessage = getDictationUnavailableReason() || getDictationWarning();
+  elements.dictationSupportNote.textContent = dictationMessage;
+  elements.dictationSupportNote.classList.toggle("is-hidden", !dictationMessage);
 }
 
 function updateStatusBar() {
@@ -642,7 +719,7 @@ function clearFeedback() {
 function renderMeaningQuestion() {
   const currentQuestion = state.questions[state.currentIndex];
 
-  elements.gameTitle.textContent = getModeMeta("meaning").gameTitle;
+  elements.gameTitle.textContent = state.roundKind === "rematch" ? "错题再战" : getModeMeta("meaning").gameTitle;
   elements.promptLabel.textContent = getModeMeta("meaning").promptLabel;
   elements.posTag.textContent = currentQuestion.partOfSpeech;
   elements.difficultyTag.textContent = getDifficultyLabel(currentQuestion.difficulty);
@@ -672,7 +749,7 @@ function renderMeaningQuestion() {
 function renderDictationQuestion() {
   const currentQuestion = state.questions[state.currentIndex];
 
-  elements.gameTitle.textContent = getModeMeta("dictation").gameTitle;
+  elements.gameTitle.textContent = state.roundKind === "rematch" ? "错题听写再战" : getModeMeta("dictation").gameTitle;
   elements.promptLabel.textContent = getModeMeta("dictation").promptLabel;
   elements.posTag.textContent = "听写模式";
   elements.questionWord.textContent = "请写出你听到的单词";
@@ -867,7 +944,7 @@ function handleMeaningAnswer(selectedOption) {
   } else {
     state.combo = 0;
     state.lives -= 1;
-    addWrongWord(currentQuestion);
+    addWrongWord(currentQuestion, { sourceOptions: currentQuestion.options });
     elements.feedbackBox.className = "feedback-box is-error";
     elements.feedbackBox.textContent = `答错了。正确答案是「${currentQuestion.meaning}」`;
   }
@@ -948,13 +1025,38 @@ function getDictationResultSummary(accuracy) {
   return "先别急，听写本来就比选择题更难，把这一轮错词复盘一遍最有效。";
 }
 
+function getMeaningRematchSummary(accuracy) {
+  if (accuracy === 100) {
+    return "这轮错题再战已经全部纠正，刚才的薄弱点补得很及时。";
+  }
+
+  if (accuracy >= 60) {
+    return "这轮错题再战有进步，还剩下少量词需要再过一遍。";
+  }
+
+  return "这轮错题再战说明这些词还不够稳，再练一次会更有效。";
+}
+
+function getDictationRematchSummary(accuracy) {
+  if (accuracy === 100) {
+    return "这轮错题听写已经全部写对，拼写修正得很到位。";
+  }
+
+  if (accuracy >= 60) {
+    return "这轮错题听写已经追回来一部分，剩下的再巩固一次会更稳。";
+  }
+
+  return "这些错词的拼写还需要继续强化，建议再战一次或回顾后再练。";
+}
+
 function renderResult() {
   const accuracy = state.answeredCount === 0
     ? 0
     : Math.round((state.correctCount / state.answeredCount) * 100);
+  const isRematchRound = state.roundKind === "rematch";
 
   if (state.selectedMode === "dictation") {
-    elements.resultTitle.textContent = "听写结算";
+    elements.resultTitle.textContent = isRematchRound ? "错题听写再战结算" : "听写结算";
     elements.resultLabel1.textContent = "本局答对";
     elements.resultScore.textContent = String(state.correctCount);
     elements.resultLabel2.textContent = "总词数";
@@ -963,11 +1065,15 @@ function renderResult() {
     elements.resultAccuracy.textContent = `${accuracy}%`;
     elements.resultLabel4.textContent = "错词数";
     elements.resultBestCombo.textContent = String(state.wrongWords.length);
-    elements.resultSummary.textContent = getDictationResultSummary(accuracy);
-    elements.resultReviewEmpty.textContent = "这一轮听写没有错词，表现很稳。";
+    elements.resultSummary.textContent = isRematchRound
+      ? getDictationRematchSummary(accuracy)
+      : getDictationResultSummary(accuracy);
+    elements.resultReviewEmpty.textContent = isRematchRound
+      ? "这一轮错题听写已经全部纠正，表现很稳。"
+      : "这一轮听写没有错词，表现很稳。";
     elements.playAgainButton.textContent = "再来一轮听写";
   } else {
-    elements.resultTitle.textContent = "本局结算";
+    elements.resultTitle.textContent = isRematchRound ? "错题再战结算" : "本局结算";
     elements.resultLabel1.textContent = "最终得分";
     elements.resultScore.textContent = String(state.score);
     elements.resultLabel2.textContent = "答对题数";
@@ -976,11 +1082,17 @@ function renderResult() {
     elements.resultAccuracy.textContent = `${accuracy}%`;
     elements.resultLabel4.textContent = "最高连击";
     elements.resultBestCombo.textContent = String(state.bestCombo);
-    elements.resultSummary.textContent = getMeaningResultSummary(accuracy);
-    elements.resultReviewEmpty.textContent = "这一局没有错词，表现不错。";
+    elements.resultSummary.textContent = isRematchRound
+      ? getMeaningRematchSummary(accuracy)
+      : getMeaningResultSummary(accuracy);
+    elements.resultReviewEmpty.textContent = isRematchRound
+      ? "这一轮错题再战已经全部纠正，表现不错。"
+      : "这一局没有错词，表现不错。";
     elements.playAgainButton.textContent = "再来一局";
   }
 
+  elements.rematchButton.textContent = isRematchRound ? "继续错题再战" : "错题再战";
+  elements.rematchButton.classList.toggle("is-hidden", state.wrongWords.length === 0);
   elements.wrongCount.textContent = `${state.wrongWords.length} 个`;
   elements.resultReviewList.innerHTML = "";
 
@@ -1015,6 +1127,10 @@ function startTimer() {
 }
 
 function saveRoundSummary() {
+  if (state.roundKind === "rematch") {
+    return;
+  }
+
   const accuracy = state.answeredCount === 0
     ? 0
     : Math.round((state.correctCount / state.answeredCount) * 100);
@@ -1064,6 +1180,7 @@ function endGame() {
 
 function prepareRoundState(items) {
   state.questions = items;
+  state.roundKind = "normal";
   state.currentIndex = 0;
   state.score = 0;
   state.combo = 0;
@@ -1082,7 +1199,7 @@ function prepareRoundState(items) {
 }
 
 function startGame() {
-  if (state.selectedMode === "dictation" && !isSpeechSupported()) {
+  if (state.selectedMode === "dictation" && !isDictationAvailable()) {
     updateHomeStats();
     return;
   }
@@ -1098,6 +1215,35 @@ function startGame() {
   }
 
   prepareRoundState(items);
+  showScreen("game");
+  renderQuestion();
+
+  if (state.selectedMode === "meaning") {
+    startTimer();
+  }
+}
+
+function startWrongAnswerRematch() {
+  if (state.wrongWords.length === 0) {
+    return;
+  }
+
+  stopActiveRoundEffects();
+
+  const rematchWords = state.wrongWords.map((word) => ({
+    ...word,
+    sourceOptions: Array.isArray(word.sourceOptions) ? [...word.sourceOptions] : undefined
+  }));
+  const items = state.selectedMode === "dictation"
+    ? buildDictationRematchRound(rematchWords)
+    : buildMeaningRematchQuestionSet(rematchWords, state.selectedLevel);
+
+  if (items.length === 0) {
+    return;
+  }
+
+  prepareRoundState(items);
+  state.roundKind = "rematch";
   showScreen("game");
   renderQuestion();
 
@@ -1252,7 +1398,7 @@ function startDictationPlayback(word) {
   state.dictationSubmitSecondsLeft = GAME_CONFIG.dictation.submitWindowSeconds;
   updateStatusBar();
 
-  if (!isSpeechSupported()) {
+  if (!isDictationAvailable()) {
     state.dictationPlaybackStatus = "error";
     updateStatusBar();
     return;
@@ -1270,6 +1416,7 @@ function goHome() {
 function bindEvents() {
   elements.startButton.addEventListener("click", startGame);
   elements.playAgainButton.addEventListener("click", startGame);
+  elements.rematchButton.addEventListener("click", startWrongAnswerRematch);
   elements.backHomeButton.addEventListener("click", goHome);
   elements.exitGameButton.addEventListener("click", goHome);
   elements.toggleReviewButton.addEventListener("click", toggleHomeReview);
