@@ -25,4 +25,4 @@
 - `styles.css`：样式与响应式布局
 - `words.js`：词库数据
 - `app.js`：游戏逻辑和本地存储
-- `01-requirements.md` ~ `05-practice-mode-design.md`：需求与设计文档
+- `requirements\`：需求与设计文档目录（包含 `01-requirements.md` ~ `05-practice-mode-design.md`）
