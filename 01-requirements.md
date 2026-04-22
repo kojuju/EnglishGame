@@ -1,160 +1,160 @@
-# English Game - Requirements
+# English Game - 需求文档
 
-## 1. Product Positioning
+## 1. 产品定位
 
-This project is a lightweight web-based English mini-game for learners with weak CET-4 foundations. The first version focuses on one narrow but high-value ability:
+这个项目是一个轻量级、基于网页的英语小游戏，面向四级基础较弱的学习者。第一版聚焦一个范围较窄但价值很高的核心能力：
 
-- recognize high-frequency CET-4 vocabulary quickly
-- match English words to Chinese meanings with low cognitive load
-- build confidence through short, game-like sessions instead of heavy test pressure
+- 快速识别高频 CET-4 词汇
+- 以较低认知负担完成英文单词与中文释义匹配
+- 通过短时、游戏化的练习建立信心，而不是承受沉重的应试压力
 
-The product should feel like a casual level-based game, not a traditional cram-school exercise system.
+产品整体体验应更像一个轻松的分级闯关游戏，而不是传统的刷题或补课系统。
 
-## 2. Target Users
+## 2. 目标用户
 
-### Primary users
+### 核心用户
 
-- CET-4 learners around the 300-point level
-- users with weak vocabulary foundations
-- users who are easily frustrated by long reading passages or dense grammar study
-- users who need a simple way to restart English learning
+- 四级分数约在 300 分左右的学习者
+- 词汇基础薄弱的用户
+- 容易被长篇阅读或密集语法学习劝退的用户
+- 希望以简单方式重新开始学英语的用户
 
-### User traits
+### 用户特征
 
-- weak retention for isolated word memorization
-- low patience for long explanations
-- needs fast feedback and visible progress
-- more likely to continue if the experience feels light and rewarding
+- 对孤立背单词的记忆保持较弱
+- 对长篇解释缺乏耐心
+- 需要快速反馈和可见进步
+- 当体验轻松且有正反馈时，更愿意持续使用
 
-## 3. Core Goal
+## 3. 核心目标
 
-The first version should help users reach this practical outcome:
+第一版需要帮助用户达成这样一个实际结果：
 
-> When seeing a common CET-4 word, the user can quickly identify its likely Chinese meaning.
+> 当用户看到一个常见 CET-4 单词时，可以快速判断出它最可能对应的中文意思。
 
-This is not a full English learning solution. It is a focused entry-point product.
+这不是一个完整的英语学习解决方案，而是一个聚焦明确的入门型产品。
 
-## 4. Non-Goals
+## 4. 非目标
 
-The first version should **not** aim to solve:
+第一版 **不** 以解决以下问题为目标：
 
-- full CET-4 exam preparation
-- grammar systems
-- listening comprehension
-- sentence translation
-- speaking assessment
-- social competition and leaderboard systems
+- 完整的四级考试备考
+- 系统化语法学习
+- 听力理解
+- 句子翻译
+- 口语评测
+- 社交竞争和排行榜系统
 
-## 5. Product Principles
+## 5. 产品原则
 
-1. **Low barrier**: users should understand how to play within 5 seconds.
-2. **Short sessions**: one round should be short enough to replay immediately.
-3. **Fast feedback**: every answer should give instant positive or corrective feedback.
-4. **Low frustration**: failure should not feel punishing.
-5. **Visible progress**: scores, combo, and review should make improvement obvious.
+1. **低门槛**：用户应在 5 秒内理解怎么玩。
+2. **短局制**：每一局都应足够短，便于用户立即再来一局。
+3. **快反馈**：每次作答后都应立刻给出正向或纠错反馈。
+4. **低挫败**：失败不应让用户感到过于受惩罚。
+5. **可见进步**：分数、连击和回顾应让提升变得清晰可见。
 
-## 6. MVP Scope
+## 6. MVP 范围
 
-### In scope
+### 本期范围内
 
-- single-player web game
-- local-only play, no login
-- high-frequency CET-4 vocabulary question bank
-- multiple-choice meaning recognition
-- score, lives, timer, combo
-- end-of-round summary
-- wrong-word review
-- local high score / simple local progress persistence
+- 单人网页游戏
+- 仅本地运行，无需登录
+- CET-4 高频词汇题库
+- 多项选择的词义识别玩法
+- 分数、生命、计时、连击
+- 局后结果总结
+- 错词回顾
+- 本地最高分和基础学习进度持久化
 
-### Out of scope
+### 本期范围外
 
-- account system
-- cloud sync
-- ranking leaderboard
-- multiplayer
-- voice and listening mode
-- image-based vocabulary mode
-- complex level map or story mode
+- 账号系统
+- 云端同步
+- 排行榜
+- 多人玩法
+- 语音和听力模式
+- 图片词汇模式
+- 复杂的关卡地图或剧情模式
 
-## 7. Core Gameplay
+## 7. 核心玩法
 
-Each question presents:
+每道题展示：
 
-- one English word
-- four Chinese meaning options
-- one correct answer and three distractors
+- 一个英文单词
+- 四个中文释义选项
+- 一个正确答案和三个干扰项
 
-The player:
+玩家需要：
 
-- selects the correct meaning before time runs out
-- gains score for correct answers
-- gains extra reward for consecutive correct answers
-- loses life or combo on mistakes
+- 在时间结束前选出正确释义
+- 答对后获得分数
+- 连续答对时获得额外奖励
+- 答错时损失生命或中断连击
 
-The round ends when:
+一局在以下任一条件下结束：
 
-- the question count is completed, or
-- the timer ends, or
-- lives drop to zero
+- 完成全部题目，或
+- 总计时结束，或
+- 生命归零
 
-## 8. MVP Session Design
+## 8. MVP 单局设计
 
-Recommended initial values:
+推荐初始值：
 
-- 10 questions per round
-- 60 to 90 seconds total round time
-- 3 lives
-- 4 options per question
-- combo bonus after consecutive correct answers
+- 每局 10 题
+- 单局总时长 60 到 90 秒
+- 3 条生命
+- 每题 4 个选项
+- 连续答对后获得连击奖励
 
-These values should remain configurable in code instead of hardcoded into UI logic.
+这些数值应在代码中保持可配置，而不是写死在 UI 逻辑里。
 
-## 9. Content Scope
+## 9. 内容范围
 
-The initial vocabulary pool should start small and controllable:
+初始词库应从一个较小、便于控制的规模开始：
 
-- 100 to 300 CET-4 high-frequency words
-- each word includes:
-  - word
-  - Chinese meaning
-  - optional part of speech
-  - optional example sentence
-  - difficulty tag
+- 100 到 300 个 CET-4 高频词
+- 每个单词包含：
+  - 单词本体
+  - 中文释义
+  - 可选词性
+  - 可选例句
+  - 难度标签
 
-Question quality matters more than quantity in V1.
+在 V1 中，题目质量比题量更重要。
 
-## 10. Success Signals
+## 10. 成功信号
 
-The first version is successful if users can:
+如果用户能够做到以下几点，第一版就算成功：
 
-- start a round quickly
-- finish a round without confusion
-- understand why they were right or wrong
-- replay immediately after failure or success
-- review wrong words after a round
+- 快速开始一局
+- 无困惑地完成一局
+- 明白自己为什么答对或答错
+- 无论成功还是失败都愿意立即重开
+- 能在一局结束后回顾错词
 
-## 11. Risks and Design Constraints
+## 11. 风险与设计约束
 
-### Main risks
+### 主要风险
 
-- boring repetition if distractors are weak
-- frustration if timer pressure is too strong
-- low retention if only score exists without review
-- weak game feel if feedback is too plain
+- 如果干扰项质量太弱，会导致重复感和无聊感
+- 如果时间压力过强，会导致挫败感上升
+- 如果只有分数而没有回顾，记忆保持会偏弱
+- 如果反馈表现太平淡，游戏感会不足
 
-### Constraints
+### 约束条件
 
-- should run smoothly in browsers on desktop and mobile
-- should work fully offline once static assets are loaded
-- should avoid heavy backend dependence in V1
+- 应在桌面和移动端浏览器中流畅运行
+- 静态资源加载完成后应能完全离线使用
+- 在 V1 中应避免对重型后端产生依赖
 
-## 12. Version Direction After MVP
+## 12. MVP 之后的版本方向
 
-Possible future directions:
+后续可能扩展的方向：
 
-- spelling challenge mode
-- mistake-based adaptive question selection
-- daily challenge
-- stage progression by difficulty
-- sentence example reinforcement
-- listening mode
+- 拼写挑战模式
+- 基于错题的自适应选题
+- 每日挑战
+- 按难度推进的阶段式进度
+- 例句强化
+- 听力模式

@@ -1,208 +1,208 @@
-# English Game - Gameplay and Interaction Design
+# English Game - 玩法与交互设计
 
-## 1. Experience Summary
+## 1. 体验概述
 
-The intended player feeling is:
+希望玩家感受到的整体体验是：
 
-- easy to start
-- quick to understand
-- satisfying to answer
-- worth replaying immediately
+- 上手轻松
+- 理解迅速
+- 作答有反馈感
+- 打完一局还想马上再来
 
-The game should use bright and simple feedback, short text blocks, and obvious primary actions.
+游戏应采用明亮、简洁的反馈方式，减少长段文字，突出最主要的操作按钮。
 
-## 2. Core Loop
+## 2. 核心循环
 
-The complete loop for V1:
+V1 的完整循环如下：
 
-1. enter the home page
-2. tap "Start"
-3. answer vocabulary meaning questions
-4. receive instant feedback
-5. continue building combo and score
-6. finish the round
-7. see result summary and wrong-word review
-8. tap "Play Again"
+1. 进入首页
+2. 点击“开始”
+3. 回答词义选择题
+4. 获得即时反馈
+5. 继续积累连击和分数
+6. 完成本局
+7. 查看结果总结与错词回顾
+8. 点击“再来一局”
 
-The loop should be short enough to encourage repeated play.
+整套循环应足够短，能够鼓励用户重复游玩。
 
-## 3. Page Structure
+## 3. 页面结构
 
-## Home Page
+## 首页
 
-Purpose:
+目标：
 
-- explain the game in one glance
-- provide a clear start action
-- show simple progress data
+- 让用户一眼明白这是什么游戏
+- 提供明确的开始入口
+- 展示基础进度信息
 
-Suggested modules:
+建议模块：
 
-- game title
-- short one-line slogan
-- start button
-- highest score
-- latest accuracy
-- optional "review wrong words" button
+- 游戏标题
+- 一句简短标语
+- 开始按钮
+- 最高分
+- 最近正确率
+- 可选的“查看错词”按钮
 
-## In-Game Page
+## 游戏页
 
-Purpose:
+目标：
 
-- keep the player focused on one decision at a time
+- 让玩家在任意时刻只专注于一个决策
 
-Suggested modules:
+建议模块：
 
-- top status bar
-  - remaining time
-  - score
-  - lives
-  - combo
-- current question area
-  - large English word
-  - optional phonetic symbol or part of speech
-- answer options area
-  - four large tap-friendly choices
-- immediate feedback layer
-  - correct / wrong state
-  - short explanation if needed
+- 顶部状态栏
+  - 剩余时间
+  - 分数
+  - 生命
+  - 连击
+- 当前题目区域
+  - 大字号英文单词
+  - 可选展示音标或词性
+- 选项区域
+  - 四个适合点击的大按钮
+- 即时反馈层
+  - 正确 / 错误状态
+  - 如有需要可补充简短说明
 
-## Result Page
+## 结果页
 
-Purpose:
+目标：
 
-- provide closure and motivate replay
+- 提供收束感，并鼓励用户继续重开
 
-Suggested modules:
+建议模块：
 
-- final score
-- correct count / total
-- accuracy
-- highest combo
-- encouraging result text
-- wrong-word list
-- replay button
-- back to home button
+- 最终得分
+- 答对数 / 总题数
+- 正确率
+- 最高连击
+- 鼓励性的结果文案
+- 错词列表
+- 再来一局按钮
+- 返回首页按钮
 
-## 4. Round Rules
+## 4. 单局规则
 
-Recommended initial rules:
+推荐初始规则：
 
-- one round contains 10 questions
-- one global countdown controls the whole round
-- player starts with 3 lives
-- each question has 4 options
-- if answer is correct, move to next question after short feedback
-- if answer is wrong, subtract one life and reset combo
-- if lives reach zero, round ends immediately
-- if question list finishes first, round ends as success
-- if timer reaches zero, round ends immediately
+- 每局包含 10 道题
+- 整局使用一个全局倒计时
+- 玩家初始有 3 条生命
+- 每题提供 4 个选项
+- 答对后在短暂反馈后进入下一题
+- 答错后扣除 1 条生命并清空连击
+- 当生命归零时立即结束本局
+- 当题目先答完时，本局成功结束
+- 当时间归零时立即结束本局
 
-## 5. Scoring Rules
+## 5. 计分规则
 
-Suggested scoring:
+建议计分方式：
 
-- correct answer: +100
-- consecutive correct bonus:
-  - combo 3+: +20
-  - combo 5+: +50
-  - combo 8+: +100
-- wrong answer: no score gain
+- 答对一题：+100
+- 连续答对奖励：
+  - 连击 3 次及以上：+20
+  - 连击 5 次及以上：+50
+  - 连击 8 次及以上：+100
+- 答错：不加分
 
-Design intent:
+设计意图：
 
-- reward streaks without making single mistakes feel catastrophic
-- let weaker users still earn meaningful scores
+- 奖励连击，但不让单次失误显得毁灭性
+- 让基础较弱的用户也能积累到有成就感的分数
 
-## 6. Feedback Design
+## 6. 反馈设计
 
-### Correct feedback
+### 答对反馈
 
-- green highlight
-- short positive text such as "Great!" or "Correct!"
-- optional combo animation
+- 绿色高亮
+- 简短正向文案，如“答对了！”或“很好！”
+- 可选的连击动画
 
-### Wrong feedback
+### 答错反馈
 
-- red highlight
-- show correct meaning immediately
-- brief neutral tone, not mocking
+- 红色高亮
+- 立即显示正确释义
+- 文案保持中性，不嘲讽用户
 
-### End-of-round feedback
+### 局后反馈
 
-The result copy should encourage replay:
+结果文案应鼓励用户继续挑战：
 
-- high accuracy: "Nice run. You're recognizing the words faster."
-- medium accuracy: "Good progress. A few more rounds will make these words familiar."
-- low accuracy: "You already saw the key words once. Try again and beat this score."
+- 高正确率：`这局很稳，你识别单词越来越快了。`
+- 中等正确率：`状态不错，再来几局这批词会更熟。`
+- 低正确率：`你已经把重点词过了一遍，再试一次，争取刷新这局成绩。`
 
-## 7. Difficulty Design
+## 7. 难度设计
 
-V1 should stay simple, but difficulty still needs light control.
+V1 应保持简单，但仍需具备轻量的难度控制。
 
-Possible difficulty levers:
+可用的难度调节手段：
 
-- easier words first
-- more common distractors later
-- shorter total time in later versions
-- reuse wrong words more often
+- 先出现更简单的单词
+- 后面逐步提高干扰项相似度
+- 后续版本可缩短总时间
+- 更频繁地复现错词
 
-For MVP, a safe approach is:
+对于 MVP，一个稳妥的做法是：
 
-- mixed easy and medium words
-- no aggressive time pressure
-- stable 4-option format
+- 以 easy 和 medium 难度单词混合为主
+- 不施加过强的时间压力
+- 保持稳定的四选一格式
 
-## 8. Wrong-Word Review
+## 8. 错词回顾
 
-This is one of the most important retention features in V1.
+这是 V1 中最关键的记忆保持功能之一。
 
-At the end of a round, show:
+每局结束后应展示：
 
-- the English word
-- the correct Chinese meaning
-- whether the user answered it wrong
+- 英文单词
+- 正确中文释义
+- 用户是否答错
 
-Optional future enhancement:
+后续可选增强方向：
 
-- let the user replay only the wrong words
+- 允许用户只重练本局错词
 
-## 9. Local Persistence
+## 9. 本地持久化
 
-Recommended local data to store in browser localStorage:
+建议使用浏览器 localStorage 存储以下本地数据：
 
-- highest score
-- last round score
-- latest accuracy
-- wrong-word ids
-- basic unlocked progress if later added
+- 最高分
+- 最近一局得分
+- 最近正确率
+- 错词 ID 列表
+- 如果未来加入进度系统，也可存基础解锁状态
 
-V1 should not store sensitive or unnecessary personal information.
+V1 不应存储敏感或无必要的个人信息。
 
-## 10. Interaction Notes
+## 10. 交互说明
 
-### Desktop
+### 桌面端
 
-- keyboard support can be added with keys 1 to 4
-- hover state for answer options
+- 可以加入键盘 1 到 4 的快捷作答
+- 选项按钮提供 hover 状态
 
-### Mobile
+### 移动端
 
-- large vertical buttons
-- avoid small clickable areas
-- keep major information above the fold
+- 使用纵向排列的大按钮
+- 避免过小的点击区域
+- 主要信息尽量保持在首屏可见
 
-## 11. UX Constraints
+## 11. UX 约束
 
-- no page should require reading long paragraphs
-- the answer action should always be visually obvious
-- animation should be light and quick
-- the next step should always be clear
+- 任一页面都不应要求用户阅读长段文字
+- 作答动作必须始终足够明显
+- 动画应轻量且节奏快
+- 用户的下一步操作应始终清晰
 
-## 12. Future Interaction Expansions
+## 12. 后续交互扩展方向
 
-- level map
-- daily sign-in challenge
-- limited-time challenge mode
-- boss stage using reviewed wrong words
-- audio pronunciation button
+- 关卡地图
+- 每日签到挑战
+- 限时挑战模式
+- 基于错词的 Boss 关
+- 发音播放按钮

@@ -1,58 +1,58 @@
-# English Game - MVP Build Plan
+# English Game - MVP 构建计划
 
-## 1. Recommended Technical Direction
+## 1. 推荐技术方向
 
-For fast delivery and easy iteration, the recommended stack is:
+为了更快交付并方便后续迭代，推荐采用以下技术栈：
 
 - Vite
 - React
 - TypeScript
-- simple CSS or Tailwind
-- local JSON question bank
-- browser localStorage for persistence
+- 简单 CSS 或 Tailwind
+- 本地 JSON 题库
+- 浏览器 localStorage 持久化
 
-This stack is enough for a polished single-player web MVP without backend work.
+这套组合足以支撑一个体验完整、无需后端的单人网页 MVP。
 
-## 2. MVP Functional Modules
+## 2. MVP 功能模块
 
-### A. Static data module
+### A. 静态数据模块
 
-Responsible for:
+负责：
 
-- vocabulary dataset loading
-- question source management
-- distractor generation basis
+- 词汇数据加载
+- 题目来源管理
+- 干扰项生成基础
 
-### B. Game engine module
+### B. 游戏引擎模块
 
-Responsible for:
+负责：
 
-- round start
-- question sequencing
-- score updates
-- combo logic
-- life updates
-- timer updates
-- round end conditions
+- 开始一局
+- 题目顺序控制
+- 分数更新
+- 连击逻辑
+- 生命更新
+- 计时更新
+- 局终条件判断
 
-### C. UI module
+### C. UI 模块
 
-Responsible for:
+负责：
 
-- home page
-- in-game page
-- result page
-- reusable status and option components
+- 首页
+- 游戏页
+- 结果页
+- 可复用的状态展示和选项组件
 
-### D. Persistence module
+### D. 持久化模块
 
-Responsible for:
+负责：
 
-- save high score
-- save latest result
-- save wrong-word list
+- 保存最高分
+- 保存最近一局结果
+- 保存错词列表
 
-## 3. Suggested Project Structure
+## 3. 建议的项目结构
 
 ```text
 src/
@@ -79,9 +79,9 @@ src/
   main.tsx
 ```
 
-## 4. Minimal Data Structure
+## 4. 最小数据结构
 
-Example word entry:
+示例单词结构：
 
 ```json
 {
@@ -93,7 +93,7 @@ Example word entry:
 }
 ```
 
-Example runtime question shape:
+示例运行时题目结构：
 
 ```json
 {
@@ -104,93 +104,93 @@ Example runtime question shape:
 }
 ```
 
-## 5. Milestone Breakdown
+## 5. 里程碑拆分
 
-### Milestone 1 - Basic framework
+### 里程碑 1 - 基础框架
 
-- initialize web project
-- set up page routing or page-state switching
-- prepare basic layout and styles
+- 初始化网页项目
+- 建立页面路由或页面状态切换机制
+- 准备基础布局与样式
 
-Exit condition:
+退出条件：
 
-- the app opens and can switch between home, game, and result views
+- 应用可以打开，并能在首页、游戏页、结果页之间切换
 
-### Milestone 2 - Core game flow
+### 里程碑 2 - 核心游戏流程
 
-- load local words
-- generate question set
-- answer questions
-- calculate score, combo, lives
-- finish round on valid end condition
+- 加载本地词库
+- 生成题目集合
+- 完成答题交互
+- 计算分数、连击和生命
+- 在合法条件下结束一局
 
-Exit condition:
+退出条件：
 
-- a full round can be completed from start to result
+- 用户能够从开始一直打到结果页，完成完整一局
 
-### Milestone 3 - Persistence and review
+### 里程碑 3 - 持久化与回顾
 
-- store high score
-- store latest accuracy
-- store wrong-word list
-- show wrong-word review in result page
+- 存储最高分
+- 存储最近正确率
+- 存储错词列表
+- 在结果页展示错词回顾
 
-Exit condition:
+退出条件：
 
-- refresh does not erase key progress data
+- 刷新页面后，关键进度数据不会丢失
 
-### Milestone 4 - Polish
+### 里程碑 4 - 打磨
 
-- improve feedback animations
-- improve button states
-- improve mobile layout
-- tune copywriting and pacing
+- 优化反馈动画
+- 优化按钮状态
+- 优化移动端布局
+- 调整文案与节奏
 
-Exit condition:
+退出条件：
 
-- the product feels coherent and replayable
+- 产品整体体验协调、顺畅，并具备重复游玩价值
 
-## 6. Acceptance Criteria for V1
+## 6. V1 验收标准
 
-The MVP is complete when:
+满足以下条件时，MVP 视为完成：
 
-- the user can start a round from the home page
-- the user can answer 10 vocabulary questions
-- correct and wrong answers are handled clearly
-- score, timer, lives, and combo all work as expected
-- the round ends correctly
-- the result page shows score, accuracy, and wrong words
-- high score persists locally
-- the experience works on both desktop and mobile browser sizes
+- 用户可以从首页开始一局
+- 用户可以完成 10 道词汇题
+- 正确和错误反馈都清晰可理解
+- 分数、计时、生命、连击按预期工作
+- 本局能在正确条件下结束
+- 结果页会展示分数、正确率和错词
+- 最高分可以本地持久化
+- 在桌面和移动端浏览器尺寸下都能正常体验
 
-## 7. Open Decisions for Later
+## 7. 后续待定问题
 
-These do not block MVP, but should be revisited:
+这些问题不会阻塞 MVP，但后续应重新讨论：
 
-- exact question count per round
-- exact timer length
-- whether wrong words should immediately reappear in the same round
-- whether part of speech should always be shown
-- whether example sentences should appear after wrong answers
+- 每局准确题量是多少
+- 单局精确时长是多少
+- 错词是否应在同一局中立即再次出现
+- 词性是否始终显示
+- 答错后是否展示例句
 
-## 8. Immediate Next Build Order
+## 8. 紧接着的实现顺序
 
-The practical implementation order should be:
+实际开发顺序建议如下：
 
-1. create the project skeleton
-2. prepare a small CET-4 word dataset
-3. implement the game engine
-4. build the three main pages
-5. add local persistence
-6. polish visual feedback
+1. 创建项目骨架
+2. 准备一小套 CET-4 词汇数据
+3. 实现游戏引擎
+4. 构建三个主页面
+5. 加入本地持久化
+6. 打磨视觉反馈
 
-## 9. Suggested First Dataset Size
+## 9. 建议的首批数据规模
 
-A good starting point is:
+一个较合适的起始规模是：
 
-- 120 words total
-- 70 easy
-- 40 medium
-- 10 hard
+- 总计 120 个单词
+- 70 个 easy
+- 40 个 medium
+- 10 个 hard
 
-This is enough to validate gameplay without slowing down development.
+这个规模足以验证玩法，又不会拖慢开发节奏。
