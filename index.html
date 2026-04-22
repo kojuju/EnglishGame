@@ -22,11 +22,16 @@
     <main class="screen-stack">
       <section class="screen is-active" id="screen-home" aria-labelledby="home-title">
         <div class="hero-card card">
-          <p class="hero-badge" id="current-level-badge">当前词库：CET-4</p>
+          <p class="hero-badge" id="current-level-badge">当前玩法：词义选择 · 级别：CET-4</p>
+          <div class="mode-switch" id="mode-switch" role="tablist" aria-label="练习模式">
+            <button class="mode-button is-active" id="mode-meaning-button" type="button" data-mode="meaning" role="tab" aria-selected="true">词义选择</button>
+            <button class="mode-button" id="mode-dictation-button" type="button" data-mode="dictation" role="tab" aria-selected="false">听写</button>
+          </div>
           <h2 id="home-title">10 题一局，按你的水平练词义</h2>
-          <p class="hero-copy">
+          <p class="hero-copy" id="home-copy">
             先在设置里选择英语级别，再开始闯关。系统会按当前级别切换词库，尽量避免超纲。
           </p>
+          <p class="home-mode-note is-hidden" id="home-mode-note"></p>
           <div class="action-row">
             <button class="primary-button" id="start-button" type="button">开始闯关</button>
             <button class="secondary-button" id="toggle-review-button" type="button">查看最近错词</button>
@@ -35,15 +40,15 @@
 
         <div class="stats-grid">
           <article class="stat-card card">
-            <span class="stat-label">词库数量</span>
+            <span class="stat-label" id="word-bank-label">词库数量</span>
             <strong class="stat-value" id="word-bank-size">0</strong>
           </article>
           <article class="stat-card card">
-            <span class="stat-label">最高分</span>
+            <span class="stat-label" id="best-score-label">最高分</span>
             <strong class="stat-value" id="best-score">0</strong>
           </article>
           <article class="stat-card card">
-            <span class="stat-label">最近正确率</span>
+            <span class="stat-label" id="latest-accuracy-label">最近正确率</span>
             <strong class="stat-value" id="latest-accuracy">0%</strong>
           </article>
         </div>
@@ -63,16 +68,16 @@
           </div>
           <div class="tips-grid">
             <article>
-              <strong>1. 每局 10 题</strong>
-              <p>整局限时，适合反复重开刷熟练度。</p>
+              <strong id="tip-title-1">1. 每局 10 题</strong>
+              <p id="tip-copy-1">整局限时，适合反复重开刷熟练度。</p>
             </article>
             <article>
-              <strong>2. 连击会加分</strong>
-              <p>连续答对越多，奖励越高，但单次失误不致命。</p>
+              <strong id="tip-title-2">2. 连击会加分</strong>
+              <p id="tip-copy-2">连续答对越多，奖励越高，但单次失误不致命。</p>
             </article>
             <article>
-              <strong>3. 错词会回顾</strong>
-              <p>局后会展示答错的词，帮助你马上复习。</p>
+              <strong id="tip-title-3">3. 错词会回顾</strong>
+              <p id="tip-copy-3">局后会展示答错的词，帮助你马上复习。</p>
             </article>
           </div>
         </section>
@@ -90,32 +95,41 @@
 
           <div class="status-grid">
             <article class="status-chip">
-              <span>时间</span>
+              <span id="status-label-1">时间</span>
               <strong id="timer-value">01:15</strong>
             </article>
             <article class="status-chip">
-              <span>分数</span>
+              <span id="status-label-2">分数</span>
               <strong id="score-value">0</strong>
             </article>
             <article class="status-chip">
-              <span>生命</span>
+              <span id="status-label-3">生命</span>
               <strong id="lives-value">3</strong>
             </article>
             <article class="status-chip">
-              <span>连击</span>
+              <span id="status-label-4">连击</span>
               <strong id="combo-value">0</strong>
             </article>
           </div>
 
-          <div class="question-panel">
+          <div class="question-panel" id="question-panel">
             <div class="question-meta">
               <span class="tag" id="pos-tag">v.</span>
               <span class="tag tag-muted" id="difficulty-tag">easy</span>
             </div>
-            <p class="prompt-label">请选择这个英文单词最贴切的中文意思：</p>
+            <p class="prompt-label" id="prompt-label">请选择这个英文单词最贴切的中文意思：</p>
             <h3 class="question-word" id="question-word">abandon</h3>
             <p class="question-phonetic" id="question-phonetic">/əˈbændən/</p>
-            <p class="question-hint">键盘也可以按 1 / 2 / 3 / 4 作答</p>
+            <p class="question-hint" id="question-hint">键盘也可以按 1 / 2 / 3 / 4 作答</p>
+            <div class="dictation-panel is-hidden" id="dictation-panel">
+              <label class="dictation-label" for="dictation-input">请在三遍播放结束后提交你的拼写：</label>
+              <div class="dictation-input-row">
+                <input class="dictation-input" id="dictation-input" type="text" inputmode="latin" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="输入你听到的英文单词">
+                <button class="primary-button" id="submit-dictation-button" type="button">提交拼写</button>
+              </div>
+              <p class="dictation-status" id="dictation-status">准备播放</p>
+              <p class="dictation-support-note is-hidden" id="dictation-support-note">当前浏览器不支持语音播放，暂时无法使用听写模式。</p>
+            </div>
           </div>
 
           <div class="options-grid" id="options-grid" role="list"></div>
@@ -135,19 +149,19 @@
 
           <div class="result-grid">
             <article class="stat-card result-stat">
-              <span class="stat-label">最终得分</span>
+              <span class="stat-label" id="result-label-1">最终得分</span>
               <strong class="stat-value" id="result-score">0</strong>
             </article>
             <article class="stat-card result-stat">
-              <span class="stat-label">答对题数</span>
+              <span class="stat-label" id="result-label-2">答对题数</span>
               <strong class="stat-value" id="result-correct">0 / 0</strong>
             </article>
             <article class="stat-card result-stat">
-              <span class="stat-label">正确率</span>
+              <span class="stat-label" id="result-label-3">正确率</span>
               <strong class="stat-value" id="result-accuracy">0%</strong>
             </article>
             <article class="stat-card result-stat">
-              <span class="stat-label">最高连击</span>
+              <span class="stat-label" id="result-label-4">最高连击</span>
               <strong class="stat-value" id="result-best-combo">0</strong>
             </article>
           </div>
@@ -182,7 +196,7 @@
         <button class="icon-button" id="close-settings-button" type="button" aria-label="关闭设置">×</button>
       </div>
       <p class="modal-copy">
-        级别切换后，题目、词库数量、最高分、最近正确率和错词记录都会按当前级别分别显示。
+        级别切换后，两种玩法都会切换到对应级别；统计和错词记录会按“玩法 + 级别”分别显示。
       </p>
       <div class="level-options" id="level-options"></div>
       <div class="action-row modal-actions">
