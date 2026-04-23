@@ -16,9 +16,7 @@ const {
   getModeStats,
   getSavedWrongWordMap,
   getSavedWrongWords,
-  createMeaningQuestion,
-  renderLevelOptions,
-  setBodyScrollLock
+  createMeaningQuestion
 } = window.GameShared;
 
 const GAME_CONFIG = {
@@ -186,6 +184,19 @@ const elements = {
   wrongCount: document.getElementById("wrong-count"),
   rematchButton: document.getElementById("rematch-button")
 };
+
+const shell = window.__gameShell;
+
+function setSettingsDisabled(disabled) {
+  if (shell && typeof shell.setSettingsDisabled === "function") {
+    shell.setSettingsDisabled(disabled);
+    return;
+  }
+
+  if (elements.openSettingsButton) {
+    elements.openSettingsButton.disabled = disabled;
+  }
+}
 
 /**
  * 根据当前连击数计算额外得分奖励。
@@ -370,7 +381,7 @@ function buildDictationRematchRound(words) {
  * 同步页面头部按钮的可用状态。
  */
 function updateHeaderState() {
-  elements.openSettingsButton.disabled = state.currentScreen === "game";
+  setSettingsDisabled(state.currentScreen === "game");
 }
 
 /**
@@ -1251,59 +1262,6 @@ function toggleHomeReview() {
 }
 
 /**
- * 打开练习模式的设置弹窗。
- */
-function openSettingsModal() {
-  if (state.currentScreen === "game") {
-    return;
-  }
-
-  state.pendingLevel = state.selectedLevel;
-  refreshLevelOptions();
-  setBodyScrollLock(true);
-  elements.settingsModal.classList.remove("is-hidden");
-  elements.settingsModal.setAttribute("aria-hidden", "false");
-  elements.closeSettingsButton.focus();
-}
-
-/**
- * 关闭设置弹窗并恢复页面滚动。
- */
-function closeSettingsModal() {
-  if (elements.settingsModal.contains(document.activeElement)) {
-    document.activeElement.blur();
-  }
-
-  setBodyScrollLock(false);
-  elements.settingsModal.classList.add("is-hidden");
-  elements.settingsModal.setAttribute("aria-hidden", "true");
-
-  if (state.currentScreen !== "game") {
-    elements.openSettingsButton.focus();
-  }
-}
-
-/**
- * 重新渲染设置弹窗中的级别选项。
- */
-function refreshLevelOptions() {
-  renderLevelOptions(elements.levelOptions, state.pendingLevel, (levelId) => {
-    state.pendingLevel = levelId;
-    refreshLevelOptions();
-  });
-}
-
-/**
- * 应用设置弹窗中选择的级别并刷新首页。
- */
-function applyLevelSettings() {
-  state.selectedLevel = state.pendingLevel;
-  persistSelectedLevel();
-  updateHomeStats();
-  closeSettingsModal();
-}
-
-/**
  * 切换练习玩法并更新首页内容。
  */
 function selectMode(mode) {
@@ -1411,6 +1369,27 @@ function goHome() {
 }
 
 /**
+ * 接收共享壳层派发的级别切换事件，并刷新练习首页状态。
+ */
+function handleSharedLevelChange(event) {
+  if (state.currentScreen === "game") {
+    return;
+  }
+
+  const nextLevel = event.detail && typeof event.detail.levelId === "string"
+    ? event.detail.levelId
+    : getStoredLevel();
+
+  if (nextLevel === state.selectedLevel) {
+    return;
+  }
+
+  state.selectedLevel = nextLevel;
+  state.pendingLevel = nextLevel;
+  updateHomeStats();
+}
+
+/**
  * 绑定练习模式页面的交互事件。
  */
 function bindEvents() {
@@ -1420,20 +1399,11 @@ function bindEvents() {
   elements.backHomeButton.addEventListener("click", goHome);
   elements.exitGameButton.addEventListener("click", goHome);
   elements.toggleReviewButton.addEventListener("click", toggleHomeReview);
-  elements.openSettingsButton.addEventListener("click", openSettingsModal);
-  elements.closeSettingsButton.addEventListener("click", closeSettingsModal);
-  elements.cancelSettingsButton.addEventListener("click", closeSettingsModal);
-  elements.saveSettingsButton.addEventListener("click", applyLevelSettings);
   elements.submitDictationButton.addEventListener("click", handleDictationSubmit);
   elements.modeButtons.forEach((button) => {
     button.addEventListener("click", () => {
       selectMode(button.dataset.mode);
     });
-  });
-  elements.settingsModal.addEventListener("click", (event) => {
-    if (event.target === elements.settingsModal) {
-      closeSettingsModal();
-    }
   });
   elements.dictationInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
@@ -1443,11 +1413,6 @@ function bindEvents() {
   });
 
   document.addEventListener("keydown", (event) => {
-    if (!elements.settingsModal.classList.contains("is-hidden") && event.key === "Escape") {
-      closeSettingsModal();
-      return;
-    }
-
     if (state.currentScreen !== "game" || state.lockInput || state.roundFinished) {
       return;
     }
@@ -1481,6 +1446,8 @@ function bindEvents() {
       }
     });
   }
+
+  window.addEventListener("english-game:level-change", handleSharedLevelChange);
 }
 
 /**

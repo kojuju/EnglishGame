@@ -7,15 +7,12 @@ const {
   getLevelMeta,
   getWordsForLevel,
   getStoredLevel,
-  persistSelectedLevel,
   writeJsonStorage,
   getSavedSurvivalStatsMap,
   getSurvivalStats,
   getSavedSurvivalWrongWordMap,
   getSavedSurvivalWrongWords,
-  createMeaningQuestion,
-  renderLevelOptions,
-  setBodyScrollLock
+  createMeaningQuestion
 } = window.GameShared;
 
 const SURVIVAL_MODE = "meaning";
@@ -91,6 +88,19 @@ const elements = {
   wrongCount: document.getElementById("wrong-count")
 };
 
+const shell = window.__gameShell;
+
+function setSettingsDisabled(disabled) {
+  if (shell && typeof shell.setSettingsDisabled === "function") {
+    shell.setSettingsDisabled(disabled);
+    return;
+  }
+
+  if (elements.openSettingsButton) {
+    elements.openSettingsButton.disabled = disabled;
+  }
+}
+
 function getDifficultyLabel(difficulty) {
   const labels = {
     easy: "基础",
@@ -146,7 +156,7 @@ function showScreen(screenName) {
   });
 
   state.currentScreen = screenName;
-  elements.openSettingsButton.disabled = screenName === "game";
+  setSettingsDisabled(screenName === "game");
 }
 
 function updateLevelLabels() {
@@ -470,45 +480,22 @@ function toggleHomeReview() {
   elements.homeReviewPanel.classList.toggle("is-hidden");
 }
 
-function rerenderLevelOptions() {
-  renderLevelOptions(elements.levelOptions, state.pendingLevel, (levelId) => {
-    state.pendingLevel = levelId;
-    rerenderLevelOptions();
-  });
-}
-
-function openSettingsModal() {
+function handleSharedLevelChange(event) {
   if (state.currentScreen === "game") {
     return;
   }
 
-  state.pendingLevel = state.selectedLevel;
-  rerenderLevelOptions();
-  setBodyScrollLock(true);
-  elements.settingsModal.classList.remove("is-hidden");
-  elements.settingsModal.setAttribute("aria-hidden", "false");
-  elements.closeSettingsButton.focus();
-}
+  const nextLevel = event.detail && typeof event.detail.levelId === "string"
+    ? event.detail.levelId
+    : getStoredLevel();
 
-function closeSettingsModal() {
-  if (elements.settingsModal.contains(document.activeElement)) {
-    document.activeElement.blur();
+  if (nextLevel === state.selectedLevel) {
+    return;
   }
 
-  setBodyScrollLock(false);
-  elements.settingsModal.classList.add("is-hidden");
-  elements.settingsModal.setAttribute("aria-hidden", "true");
-
-  if (state.currentScreen !== "game") {
-    elements.openSettingsButton.focus();
-  }
-}
-
-function applyLevelSettings() {
-  state.selectedLevel = state.pendingLevel;
-  persistSelectedLevel(state.selectedLevel);
+  state.selectedLevel = nextLevel;
+  state.pendingLevel = nextLevel;
   updateHomeStats();
-  closeSettingsModal();
 
   if (state.currentScreen === "result") {
     showScreen("home");
@@ -522,27 +509,13 @@ function goHome() {
 }
 
 function bindEvents() {
-  elements.openSettingsButton.addEventListener("click", openSettingsModal);
-  elements.closeSettingsButton.addEventListener("click", closeSettingsModal);
-  elements.cancelSettingsButton.addEventListener("click", closeSettingsModal);
-  elements.saveSettingsButton.addEventListener("click", applyLevelSettings);
   elements.startButton.addEventListener("click", startGame);
   elements.playAgainButton.addEventListener("click", startGame);
   elements.backHomeButton.addEventListener("click", goHome);
   elements.exitGameButton.addEventListener("click", goHome);
   elements.toggleReviewButton.addEventListener("click", toggleHomeReview);
-  elements.settingsModal.addEventListener("click", (event) => {
-    if (event.target === elements.settingsModal) {
-      closeSettingsModal();
-    }
-  });
 
   document.addEventListener("keydown", (event) => {
-    if (!elements.settingsModal.classList.contains("is-hidden") && event.key === "Escape") {
-      closeSettingsModal();
-      return;
-    }
-
     if (state.currentScreen !== "game" || state.lockInput || state.roundFinished) {
       return;
     }
@@ -559,6 +532,8 @@ function bindEvents() {
       button.click();
     }
   });
+
+  window.addEventListener("english-game:level-change", handleSharedLevelChange);
 }
 
 function init() {

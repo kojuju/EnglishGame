@@ -5,12 +5,9 @@ const {
   shuffle,
   getLevelMeta,
   getStoredLevel,
-  persistSelectedLevel,
   getWordsForLevel,
   getWordById,
   createMeaningQuestion,
-  renderLevelOptions,
-  setBodyScrollLock,
   getStageProgress,
   saveStageProgress,
   getStageLevelStats,
@@ -92,6 +89,19 @@ const elements = {
   backHomeButton: document.getElementById("back-home-button")
 };
 
+const shell = window.__gameShell;
+
+function setSettingsDisabled(disabled) {
+  if (shell && typeof shell.setSettingsDisabled === "function") {
+    shell.setSettingsDisabled(disabled);
+    return;
+  }
+
+  if (elements.openSettingsButton) {
+    elements.openSettingsButton.disabled = disabled;
+  }
+}
+
 /**
  * 转换关卡题目的难度标记。
  */
@@ -120,7 +130,7 @@ function showScreen(screenName) {
   });
 
   state.currentScreen = screenName;
-  elements.openSettingsButton.disabled = screenName === "game";
+  setSettingsDisabled(screenName === "game");
 }
 
 /**
@@ -714,57 +724,22 @@ function goHome() {
   showScreen("home");
 }
 
-/**
- * 重新渲染设置弹窗中的级别选项。
- */
-function rerenderLevelOptions() {
-  renderLevelOptions(elements.levelOptions, state.pendingLevel, (levelId) => {
-    state.pendingLevel = levelId;
-    rerenderLevelOptions();
-  });
-}
-
-/**
- * 打开闯关模式设置弹窗。
- */
-function openSettings() {
+function handleSharedLevelChange(event) {
   if (state.currentScreen === "game") {
     return;
   }
 
-  state.pendingLevel = state.selectedLevel;
-  rerenderLevelOptions();
-  setBodyScrollLock(true);
-  elements.settingsModal.classList.remove("is-hidden");
-  elements.settingsModal.setAttribute("aria-hidden", "false");
-  elements.closeSettingsButton.focus();
-}
+  const nextLevel = event.detail && typeof event.detail.levelId === "string"
+    ? event.detail.levelId
+    : getStoredLevel();
 
-/**
- * 关闭闯关模式设置弹窗并恢复滚动。
- */
-function closeSettingsModal() {
-  if (elements.settingsModal.contains(document.activeElement)) {
-    document.activeElement.blur();
+  if (nextLevel === state.selectedLevel) {
+    return;
   }
 
-  setBodyScrollLock(false);
-  elements.settingsModal.classList.add("is-hidden");
-  elements.settingsModal.setAttribute("aria-hidden", "true");
-
-  if (state.currentScreen !== "game") {
-    elements.openSettingsButton.focus();
-  }
-}
-
-/**
- * 应用新的闯关级别设置并刷新首页。
- */
-function applyLevelSettings() {
-  state.selectedLevel = state.pendingLevel;
-  persistSelectedLevel(state.selectedLevel);
+  state.selectedLevel = nextLevel;
+  state.pendingLevel = nextLevel;
   renderHome();
-  closeSettingsModal();
 
   if (state.currentScreen === "result") {
     showScreen("home");
@@ -775,10 +750,6 @@ function applyLevelSettings() {
  * 绑定闯关模式页面的交互事件。
  */
 function bindEvents() {
-  elements.openSettingsButton.addEventListener("click", openSettings);
-  elements.closeSettingsButton.addEventListener("click", closeSettingsModal);
-  elements.cancelSettingsButton.addEventListener("click", closeSettingsModal);
-  elements.saveSettingsButton.addEventListener("click", applyLevelSettings);
   elements.continueStageButton.addEventListener("click", () => {
     const progress = getLevelProgress();
     const recommendedStage = getRecommendedStage(progress);
@@ -791,18 +762,8 @@ function bindEvents() {
   elements.nextStageButton.addEventListener("click", goToNextStage);
   elements.retryStageButton.addEventListener("click", retryCurrentStage);
   elements.backHomeButton.addEventListener("click", goHome);
-  elements.settingsModal.addEventListener("click", (event) => {
-    if (event.target === elements.settingsModal) {
-      closeSettingsModal();
-    }
-  });
 
   document.addEventListener("keydown", (event) => {
-    if (!elements.settingsModal.classList.contains("is-hidden") && event.key === "Escape") {
-      closeSettingsModal();
-      return;
-    }
-
     if (state.currentScreen !== "game" || state.lockInput || state.roundFinished) {
       return;
     }
@@ -819,6 +780,8 @@ function bindEvents() {
       button.click();
     }
   });
+
+  window.addEventListener("english-game:level-change", handleSharedLevelChange);
 }
 
 /**

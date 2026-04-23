@@ -62,7 +62,7 @@
 要求：
 
 1. `设置` 打开当前已有设置能力
-2. `练习模式` 继续进入当前 `index.html`
+2. `练习模式` 进入独立练习页 `practice-mode.html`
 3. `闯关模式` 继续进入当前 `stage-mode.html`
 4. `生存模式` 跳转到新的 `survival-mode.html`
 5. 当前所在菜单项需要有高亮态
