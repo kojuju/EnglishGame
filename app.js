@@ -38,45 +38,11 @@ const GAME_CONFIG = {
   }
 };
 
-const MODE_OPTIONS = [
-  { id: "meaning", label: "词义选择" },
-  { id: "dictation", label: "听写" }
-];
-
-const MODE_META = {
-  meaning: {
-    homeTitle: "10 题一局，按你的水平练词义",
-    homeCopy: "先在设置里选择英语级别，再开始练习。系统会按当前级别切换词库，尽量避免超纲。",
-    startLabel: "开始练习",
-    primaryStatLabel: "最高分",
-    reviewEmpty: "当前级别下还没有错词记录，直接开始第一局吧。",
-    tips: [
-      { title: "1. 每局 10 题", copy: "整局限时，适合反复重开刷熟练度。" },
-      { title: "2. 连击会加分", copy: "连续答对越多，奖励越高，但单次失误不致命。" },
-      { title: "3. 错词会回顾", copy: "局后会展示答错的词，帮助你马上复习。" }
-    ],
-    gameTitle: "正在练习",
-    promptLabel: "请选择这个英文单词最贴切的中文意思：",
-    hint: "键盘也可以按 1 / 2 / 3 / 4 作答",
-    defaultFeedback: "答对加分，连续答对还有连击奖励。"
-  },
-  dictation: {
-    homeTitle: "20 个词一局，听发音写拼写",
-    homeCopy: "系统会从当前级别随机抽取 20 个词，每个词自动播放 3 遍，每两遍之间间隔 5 秒。",
-    startLabel: "开始听写",
-    primaryStatLabel: "最佳正确数",
-    reviewEmpty: "当前级别下还没有听写错词记录，开始第一局试试吧。",
-    tips: [
-      { title: "1. 每局 20 词", copy: "单局比选择题更长，更适合专心练一轮拼写。" },
-      { title: "2. 每词播放 3 遍", copy: "系统会自动连播三遍，间隔固定 5 秒。" },
-      { title: "3. 三遍后提交", copy: "你可以边听边输入，第三遍结束后再提交答案。" }
-    ],
-    gameTitle: "正在听写",
-    promptLabel: "请听发音并输入你听到的英文单词：",
-    hint: "可以提前输入，第三遍播放结束后按 Enter 或点击按钮提交。",
-    defaultFeedback: "系统会自动播放 3 遍，第三遍结束后才能提交。"
-  }
-};
+const gameTypeRegistry = window.GameTypeRegistry;
+const MODE_OPTIONS = gameTypeRegistry.getSupportedTypes("practice").map((gameType) => ({
+  id: gameType.id,
+  label: gameType.label
+}));
 
 const state = {
   currentScreen: "home",
@@ -187,6 +153,69 @@ const elements = {
 
 const shell = window.__gameShell;
 
+function getSelectedModeType(mode = state.selectedMode) {
+  return gameTypeRegistry.mustGet(mode);
+}
+
+function getSelectedModeStrategy(mode = state.selectedMode) {
+  const gameType = getSelectedModeType(mode);
+
+  if (!gameType.practice) {
+    throw new Error(`Practice strategy is not registered for mode: ${mode}`);
+  }
+
+  return gameType.practice;
+}
+
+function createPracticeStrategyContext(mode = state.selectedMode) {
+  return {
+    state,
+    elements,
+    levelId: state.selectedLevel,
+    mode,
+    type: getSelectedModeType(mode),
+    config: GAME_CONFIG[mode],
+    helpers: {
+      getDifficultyLabel,
+      getComboBonus,
+      getDictationWarning,
+      getDictationUnavailableReason,
+      isDictationAvailable,
+      clearFeedback,
+      clearFeedbackTimeout,
+      addWrongWord,
+      createReviewItem,
+      setOptionStates,
+      updateStatusBar,
+      renderQuestion,
+      moveToNextQuestion,
+      handlePrimaryAction,
+      endGame,
+      startTimer,
+      stopTimer,
+      startDictationPlayback,
+      stopDictationPlayback,
+      startDictationSubmitCountdown,
+      stopDictationSubmitTimer,
+      getDictationFeedbackDelayMs() {
+        return GAME_CONFIG.dictation.feedbackDelayMs;
+      },
+      focusDictationInput() {
+        window.setTimeout(() => {
+          if (state.currentScreen === "game" && state.selectedMode === "dictation") {
+            elements.dictationInput.focus();
+          }
+        }, 0);
+      },
+      updateDictationChrome(isDictationMode) {
+        elements.questionPanel.classList.toggle("is-dictation", isDictationMode);
+        elements.dictationPanel.classList.toggle("is-hidden", !isDictationMode);
+        elements.optionsGrid.classList.toggle("is-hidden", isDictationMode);
+      }
+    }
+  };
+}
+
 function setSettingsDisabled(disabled) {
   if (shell && typeof shell.setSettingsDisabled === "function") {
     shell.setSettingsDisabled(disabled);
@@ -234,7 +263,7 @@ function getDifficultyLabel(difficulty) {
  * 获取当前玩法对应的文案配置。
  */
 function getModeMeta(mode) {
-  return MODE_META[mode] || MODE_META[DEFAULT_MODE];
+  return getSelectedModeStrategy(mode).getHomeMeta(createPracticeStrategyContext(mode));
 }
 
 /**
@@ -412,7 +441,7 @@ function renderModeButtons() {
  */
 function updateLevelLabels() {
   const levelMeta = getLevelMeta(state.selectedLevel);
-  const modeLabel = MODE_OPTIONS.find((option) => option.id === state.selectedMode)?.label || "词义选择";
+  const modeLabel = getSelectedModeType().label;
   elements.currentLevelChip.textContent = `当前级别：${levelMeta.label}`;
   elements.currentLevelBadge.textContent = `当前玩法：${modeLabel} · 级别：${levelMeta.label}`;
 }
@@ -434,9 +463,10 @@ function updateTips(meta) {
  * 刷新首页与当前玩法相关的标题、按钮和提示文案。
  */
 function updateHomeModeContent() {
-  const meta = getModeMeta(state.selectedMode);
-  const dictationUnavailableReason = getDictationUnavailableReason();
-  const dictationWarning = getDictationWarning();
+  const strategy = getSelectedModeStrategy();
+  const context = createPracticeStrategyContext();
+  const meta = strategy.getHomeMeta(context);
+  const supportState = strategy.getHomeSupportState(context);
 
   renderModeButtons();
   updateLevelLabels();
@@ -448,10 +478,10 @@ function updateHomeModeContent() {
   elements.bestScoreLabel.textContent = meta.primaryStatLabel;
   elements.latestAccuracyLabel.textContent = "最近正确率";
 
-  if (state.selectedMode === "dictation" && (dictationUnavailableReason || dictationWarning)) {
-    elements.homeModeNote.textContent = dictationUnavailableReason || dictationWarning;
+  if (supportState.noteText) {
+    elements.homeModeNote.textContent = supportState.noteText;
     elements.homeModeNote.classList.remove("is-hidden");
-    elements.startButton.disabled = Boolean(dictationUnavailableReason);
+    elements.startButton.disabled = supportState.disableStartButton;
   } else {
     elements.homeModeNote.textContent = "";
     elements.homeModeNote.classList.add("is-hidden");
@@ -505,15 +535,17 @@ function createReviewItem(word) {
  * 刷新首页统计信息和错词回顾区域。
  */
 function updateHomeStats() {
+  const strategy = getSelectedModeStrategy();
   const levelStats = getModeStats(state.selectedMode, state.selectedLevel);
   const savedWrongWords = getSavedWrongWords(state.selectedMode, state.selectedLevel);
   const levelWords = getWordsForLevel(state.selectedLevel);
 
   updateHomeModeContent();
   elements.wordBankSize.textContent = String(levelWords.length);
-  elements.bestScore.textContent = state.selectedMode === "dictation"
-    ? `${levelStats.bestCorrect} / ${GAME_CONFIG.dictation.wordsPerRound}`
-    : String(levelStats.bestScore);
+  elements.bestScore.textContent = strategy.formatHomePrimaryStat({
+    ...createPracticeStrategyContext(),
+    stats: levelStats
+  });
   elements.latestAccuracy.textContent = `${levelStats.latestAccuracy}%`;
   elements.homeReviewList.innerHTML = "";
   elements.toggleReviewButton.disabled = savedWrongWords.length === 0;
@@ -596,33 +628,7 @@ function updateDictationControls() {
  * 刷新游戏内状态栏显示。
  */
 function updateStatusBar() {
-  if (state.selectedMode === "dictation") {
-    elements.questionProgress.textContent = `第 ${state.currentIndex + 1} / ${state.questions.length} 词`;
-    elements.statusLabel1.textContent = "提交倒计时";
-    elements.timerValue.textContent = state.dictationReadyForSubmit || state.lockInput
-      ? formatTime(Math.max(state.dictationSubmitSecondsLeft, 0))
-      : "--:--";
-    elements.statusLabel2.textContent = "播放";
-    elements.scoreValue.textContent = state.dictationPlaybackStatus === "error"
-      ? "异常"
-      : `${state.dictationPlaybackCount} / ${GAME_CONFIG.dictation.playbackRepeats}`;
-    elements.statusLabel3.textContent = "答对";
-    elements.livesValue.textContent = String(state.correctCount);
-    elements.statusLabel4.textContent = "错误";
-    elements.comboValue.textContent = String(state.wrongWords.length);
-    updateDictationControls();
-    return;
-  }
-
-  elements.questionProgress.textContent = `第 ${state.currentIndex + 1} / ${state.questions.length} 题`;
-  elements.statusLabel1.textContent = "时间";
-  elements.timerValue.textContent = formatTime(state.timeLeft);
-  elements.statusLabel2.textContent = "分数";
-  elements.scoreValue.textContent = String(state.score);
-  elements.statusLabel3.textContent = "生命";
-  elements.livesValue.textContent = String(state.lives);
-  elements.statusLabel4.textContent = "连击";
-  elements.comboValue.textContent = String(state.combo);
+  getSelectedModeStrategy().updateStatusBar(createPracticeStrategyContext());
 }
 
 /**
@@ -630,7 +636,7 @@ function updateStatusBar() {
  */
 function clearFeedback() {
   elements.feedbackBox.className = "feedback-box";
-  elements.feedbackBox.textContent = getModeMeta(state.selectedMode).defaultFeedback;
+  elements.feedbackBox.textContent = getSelectedModeStrategy().getDefaultFeedback(createPracticeStrategyContext());
 }
 
 /**
@@ -707,12 +713,21 @@ function renderDictationQuestion() {
  * 根据当前玩法分发到对应的题目渲染逻辑。
  */
 function renderQuestion() {
-  if (state.selectedMode === "dictation") {
-    renderDictationQuestion();
-    return;
-  }
+  getSelectedModeStrategy().renderQuestion(createPracticeStrategyContext());
+}
 
-  renderMeaningQuestion();
+/**
+ * 把当前作答动作分发给所选题型策略。
+ */
+function handlePrimaryAction(payload = {}) {
+  getSelectedModeStrategy().handleAnswer(createPracticeStrategyContext(), payload);
+}
+
+/**
+ * 让当前题型策略决定如何推进到下一题。
+ */
+function moveToNextQuestion() {
+  getSelectedModeStrategy().moveToNextQuestion(createPracticeStrategyContext());
 }
 
 /**
@@ -807,10 +822,8 @@ function stopDictationPlayback() {
  * 停止当前对局中的所有计时和播放副作用。
  */
 function stopActiveRoundEffects() {
-  stopTimer();
-  stopDictationSubmitTimer();
   clearFeedbackTimeout();
-  stopDictationPlayback();
+  getSelectedModeStrategy().stopEffects(createPracticeStrategyContext());
 }
 
 /**
@@ -833,7 +846,7 @@ function startDictationSubmitCountdown() {
       state.dictationSubmitSecondsLeft = 0;
       stopDictationSubmitTimer();
       updateStatusBar();
-      handleDictationSubmit({ auto: true });
+      handlePrimaryAction({ auto: true });
       return;
     }
 
@@ -1030,62 +1043,7 @@ function getDictationRematchSummary(accuracy) {
  * 渲染当前对局的结算内容和错词回顾。
  */
 function renderResult() {
-  const accuracy = state.answeredCount === 0
-    ? 0
-    : Math.round((state.correctCount / state.answeredCount) * 100);
-  const isRematchRound = state.roundKind === "rematch";
-
-  if (state.selectedMode === "dictation") {
-    elements.resultTitle.textContent = isRematchRound ? "错题听写再战结算" : "听写结算";
-    elements.resultLabel1.textContent = "本局答对";
-    elements.resultScore.textContent = String(state.correctCount);
-    elements.resultLabel2.textContent = "总词数";
-    elements.resultCorrect.textContent = String(state.questions.length);
-    elements.resultLabel3.textContent = "正确率";
-    elements.resultAccuracy.textContent = `${accuracy}%`;
-    elements.resultLabel4.textContent = "错词数";
-    elements.resultBestCombo.textContent = String(state.wrongWords.length);
-    elements.resultSummary.textContent = isRematchRound
-      ? getDictationRematchSummary(accuracy)
-      : getDictationResultSummary(accuracy);
-    elements.resultReviewEmpty.textContent = isRematchRound
-      ? "这一轮错题听写已经全部纠正，表现很稳。"
-      : "这一轮听写没有错词，表现很稳。";
-    elements.playAgainButton.textContent = "再来一轮听写";
-  } else {
-    elements.resultTitle.textContent = isRematchRound ? "错题再战结算" : "本局结算";
-    elements.resultLabel1.textContent = "最终得分";
-    elements.resultScore.textContent = String(state.score);
-    elements.resultLabel2.textContent = "答对题数";
-    elements.resultCorrect.textContent = `${state.correctCount} / ${state.answeredCount}`;
-    elements.resultLabel3.textContent = "正确率";
-    elements.resultAccuracy.textContent = `${accuracy}%`;
-    elements.resultLabel4.textContent = "最高连击";
-    elements.resultBestCombo.textContent = String(state.bestCombo);
-    elements.resultSummary.textContent = isRematchRound
-      ? getMeaningRematchSummary(accuracy)
-      : getMeaningResultSummary(accuracy);
-    elements.resultReviewEmpty.textContent = isRematchRound
-      ? "这一轮错题再战已经全部纠正，表现不错。"
-      : "这一局没有错词，表现不错。";
-    elements.playAgainButton.textContent = "再来一局";
-  }
-
-  elements.rematchButton.textContent = isRematchRound ? "继续错题再战" : "错题再战";
-  elements.rematchButton.classList.toggle("is-hidden", state.wrongWords.length === 0);
-  elements.wrongCount.textContent = `${state.wrongWords.length} 个`;
-  elements.resultReviewList.innerHTML = "";
-
-  if (state.wrongWords.length === 0) {
-    elements.resultReviewEmpty.classList.remove("is-hidden");
-    return;
-  }
-
-  elements.resultReviewEmpty.classList.add("is-hidden");
-
-  state.wrongWords.forEach((word) => {
-    elements.resultReviewList.appendChild(createReviewItem(word));
-  });
+  getSelectedModeStrategy().renderResult(createPracticeStrategyContext());
 }
 
 /**
@@ -1113,42 +1071,7 @@ function startTimer() {
  * 保存本局练习统计和错词记录。
  */
 function saveRoundSummary() {
-  if (state.roundKind === "rematch") {
-    return;
-  }
-
-  const accuracy = state.answeredCount === 0
-    ? 0
-    : Math.round((state.correctCount / state.answeredCount) * 100);
-  const statsMap = getSavedStatsMap();
-  const wrongWordMap = getSavedWrongWordMap();
-
-  if (!statsMap[state.selectedMode]) {
-    statsMap[state.selectedMode] = {};
-  }
-
-  if (!wrongWordMap[state.selectedMode]) {
-    wrongWordMap[state.selectedMode] = {};
-  }
-
-  if (state.selectedMode === "dictation") {
-    const currentStats = statsMap.dictation[state.selectedLevel] || { bestCorrect: 0, latestAccuracy: 0 };
-    statsMap.dictation[state.selectedLevel] = {
-      bestCorrect: Math.max(state.correctCount, currentStats.bestCorrect),
-      latestAccuracy: accuracy
-    };
-  } else {
-    const currentStats = statsMap.meaning[state.selectedLevel] || { bestScore: 0, latestAccuracy: 0 };
-    statsMap.meaning[state.selectedLevel] = {
-      bestScore: Math.max(state.score, currentStats.bestScore),
-      latestAccuracy: accuracy
-    };
-  }
-
-  wrongWordMap[state.selectedMode][state.selectedLevel] = state.wrongWords.map((word) => word.id);
-
-  writeJsonStorage(STORAGE_KEYS.statsByModeAndLevel, statsMap);
-  writeJsonStorage(STORAGE_KEYS.wrongWordsByModeAndLevel, wrongWordMap);
+  getSelectedModeStrategy().saveStats(createPracticeStrategyContext());
 }
 
 /**
@@ -1177,8 +1100,8 @@ function prepareRoundState(items) {
   state.score = 0;
   state.combo = 0;
   state.bestCombo = 0;
-  state.lives = GAME_CONFIG.meaning.startingLives;
-  state.timeLeft = GAME_CONFIG.meaning.totalTimeSeconds;
+  state.lives = 0;
+  state.timeLeft = 0;
   state.correctCount = 0;
   state.answeredCount = 0;
   state.wrongWords = [];
@@ -1188,22 +1111,24 @@ function prepareRoundState(items) {
   state.dictationPlaybackStatus = "idle";
   state.dictationReadyForSubmit = false;
   state.dictationSubmitSecondsLeft = GAME_CONFIG.dictation.submitWindowSeconds;
+  getSelectedModeStrategy().prepareRoundState(createPracticeStrategyContext());
 }
 
 /**
  * 按当前玩法和级别开始新一局练习。
  */
 function startGame() {
-  if (state.selectedMode === "dictation" && !isDictationAvailable()) {
+  const strategy = getSelectedModeStrategy();
+  const context = createPracticeStrategyContext();
+
+  if (!strategy.canStartRound(context)) {
     updateHomeStats();
     return;
   }
 
   stopActiveRoundEffects();
 
-  const items = state.selectedMode === "dictation"
-    ? buildDictationRound(state.selectedLevel)
-    : buildMeaningQuestionSet(state.selectedLevel);
+  const items = strategy.buildRound(context);
 
   if (items.length === 0) {
     return;
@@ -1212,10 +1137,7 @@ function startGame() {
   prepareRoundState(items);
   showScreen("game");
   renderQuestion();
-
-  if (state.selectedMode === "meaning") {
-    startTimer();
-  }
+  strategy.startRoundEffects(createPracticeStrategyContext());
 }
 
 /**
@@ -1226,15 +1148,17 @@ function startWrongAnswerRematch() {
     return;
   }
 
+  const strategy = getSelectedModeStrategy();
   stopActiveRoundEffects();
 
   const rematchWords = state.wrongWords.map((word) => ({
     ...word,
     sourceOptions: Array.isArray(word.sourceOptions) ? [...word.sourceOptions] : undefined
   }));
-  const items = state.selectedMode === "dictation"
-    ? buildDictationRematchRound(rematchWords)
-    : buildMeaningRematchQuestionSet(rematchWords, state.selectedLevel);
+  const items = strategy.buildRematchRound({
+    ...createPracticeStrategyContext(),
+    words: rematchWords
+  });
 
   if (items.length === 0) {
     return;
@@ -1244,10 +1168,7 @@ function startWrongAnswerRematch() {
   state.roundKind = "rematch";
   showScreen("game");
   renderQuestion();
-
-  if (state.selectedMode === "meaning") {
-    startTimer();
-  }
+  strategy.startRoundEffects(createPracticeStrategyContext());
 }
 
 /**
@@ -1399,7 +1320,7 @@ function bindEvents() {
   elements.backHomeButton.addEventListener("click", goHome);
   elements.exitGameButton.addEventListener("click", goHome);
   elements.toggleReviewButton.addEventListener("click", toggleHomeReview);
-  elements.submitDictationButton.addEventListener("click", handleDictationSubmit);
+  elements.submitDictationButton.addEventListener("click", () => handlePrimaryAction());
   elements.modeButtons.forEach((button) => {
     button.addEventListener("click", () => {
       selectMode(button.dataset.mode);
@@ -1408,7 +1329,7 @@ function bindEvents() {
   elements.dictationInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter") {
       event.preventDefault();
-      handleDictationSubmit();
+      handlePrimaryAction();
     }
   });
 
@@ -1417,26 +1338,7 @@ function bindEvents() {
       return;
     }
 
-    if (state.selectedMode === "dictation") {
-      if (event.key === "Enter") {
-        event.preventDefault();
-        handleDictationSubmit();
-      }
-
-      return;
-    }
-
-    const number = Number(event.key);
-
-    if (number < 1 || number > 4) {
-      return;
-    }
-
-    const button = elements.optionsGrid.querySelectorAll(".option-button")[number - 1];
-
-    if (button) {
-      button.click();
-    }
+    getSelectedModeStrategy().handleKeydown(createPracticeStrategyContext(), event);
   });
 
   if (isSpeechSupported() && typeof window.speechSynthesis.addEventListener === "function") {

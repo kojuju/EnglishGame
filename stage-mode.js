@@ -14,6 +14,10 @@ const {
   saveStageLevelStats
 } = window.GameShared;
 
+const STAGE_MODE = "meaning";
+const stageType = window.GameTypeRegistry.mustGet(STAGE_MODE);
+const stageStrategy = stageType.stage;
+
 const state = {
   currentScreen: "home",
   selectedLevel: getStoredLevel(),
@@ -22,8 +26,8 @@ const state = {
   questions: [],
   currentIndex: 0,
   score: 0,
-  lives: STAGE_CONFIG.meaning.startingLives,
-  timeLeft: STAGE_CONFIG.meaning.totalTimeSeconds,
+  lives: stageStrategy.config.startingLives,
+  timeLeft: stageStrategy.config.totalTimeSeconds,
   correctCount: 0,
   answeredCount: 0,
   wrongWords: [],
@@ -91,6 +95,25 @@ const elements = {
 
 const shell = window.__gameShell;
 
+function createStageStrategyContext() {
+  return {
+    state,
+    elements,
+    levelId: state.selectedLevel,
+    helpers: {
+      getDifficultyLabel,
+      clearFeedback,
+      updateStatusBar,
+      handlePrimaryAction,
+      setOptionStates,
+      addWrongWord,
+      clearFeedbackTimeout,
+      moveToNextQuestion,
+      endStage
+    }
+  };
+}
+
 function setSettingsDisabled(disabled) {
   if (shell && typeof shell.setSettingsDisabled === "function") {
     shell.setSettingsDisabled(disabled);
@@ -137,21 +160,21 @@ function showScreen(screenName) {
  * 获取当前级别下的关卡词组列表。
  */
 function getStageGroups() {
-  return STAGE_WORD_BANK.meaning[state.selectedLevel] || [];
+  return STAGE_WORD_BANK[STAGE_MODE][state.selectedLevel] || [];
 }
 
 /**
  * 读取当前级别的闯关进度。
  */
 function getLevelProgress() {
-  return getStageProgress("meaning", state.selectedLevel, getStageGroups().length);
+  return getStageProgress(STAGE_MODE, state.selectedLevel, getStageGroups().length);
 }
 
 /**
  * 读取当前级别的关卡统计数据。
  */
 function getLevelStats() {
-  return getStageLevelStats("meaning", state.selectedLevel);
+  return getStageLevelStats(STAGE_MODE, state.selectedLevel);
 }
 
 /**
@@ -182,7 +205,7 @@ function getAccuracy() {
 function updateLevelLabels() {
   const levelMeta = getLevelMeta(state.selectedLevel);
   elements.currentLevelChip.textContent = `当前级别：${levelMeta.label}`;
-  elements.currentLevelBadge.textContent = `当前玩法：词义闯关 · 级别：${levelMeta.label}`;
+  elements.currentLevelBadge.textContent = `当前玩法：${stageType.label}闯关 · 级别：${levelMeta.label}`;
   elements.pageTip.textContent = `${levelMeta.label} 当前按固定 10 词分关，过关后可继续解锁下一关。`;
 }
 
@@ -279,49 +302,25 @@ function renderHome() {
  */
 function clearFeedback() {
   elements.feedbackBox.className = "feedback-box";
-  elements.feedbackBox.textContent = "75 秒内完成 10 题，至少答对 9 题即可通关。";
+  elements.feedbackBox.textContent = stageStrategy.getDefaultFeedback(createStageStrategyContext());
 }
 
 /**
  * 刷新闯关中的计时、分数和正确率状态栏。
  */
 function updateStatusBar() {
-  elements.questionProgress.textContent = `第 ${state.currentIndex + 1} / ${state.questions.length} 题`;
-  elements.timerValue.textContent = formatTime(Math.max(state.timeLeft, 0));
-  elements.scoreValue.textContent = String(state.score);
-  elements.livesValue.textContent = String(state.lives);
-  elements.accuracyValue.textContent = `${getAccuracy()}%`;
+  stageStrategy.updateStatusBar(createStageStrategyContext());
 }
 
 /**
  * 渲染当前关卡题目和选项。
  */
 function renderQuestion() {
-  const currentQuestion = state.questions[state.currentIndex];
+  stageStrategy.renderQuestion(createStageStrategyContext());
+}
 
-  if (!currentQuestion) {
-    return;
-  }
-
-  elements.gameTitle.textContent = `第 ${state.currentStageNumber} 关`;
-  elements.posTag.textContent = currentQuestion.partOfSpeech;
-  elements.difficultyTag.textContent = getDifficultyLabel(currentQuestion.difficulty);
-  elements.questionWord.textContent = currentQuestion.word;
-  elements.questionPhonetic.textContent = currentQuestion.phonetic || "";
-  elements.optionsGrid.innerHTML = "";
-
-  currentQuestion.options.forEach((option, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "option-button";
-    button.dataset.option = option;
-    button.innerHTML = `<strong>${index + 1}</strong>${escapeHtml(option)}`;
-    button.addEventListener("click", () => handleAnswer(option));
-    elements.optionsGrid.appendChild(button);
-  });
-
-  clearFeedback();
-  updateStatusBar();
+function handlePrimaryAction(payload = {}) {
+  stageStrategy.handleAnswer(createStageStrategyContext(), payload);
 }
 
 /**
@@ -460,8 +459,8 @@ function renderResult() {
  */
 function persistStageResult(result) {
   const totalStages = getStageGroups().length;
-  const progress = getStageProgress("meaning", state.selectedLevel, totalStages);
-  const levelStats = getStageLevelStats("meaning", state.selectedLevel);
+  const progress = getStageProgress(STAGE_MODE, state.selectedLevel, totalStages);
+  const levelStats = getStageLevelStats(STAGE_MODE, state.selectedLevel);
   const stageKey = String(result.stageNumber);
   const previousStageStats = levelStats[stageKey] || {
     bestScore: 0,
@@ -490,8 +489,8 @@ function persistStageResult(result) {
 
   progress.lastPlayedStage = result.stageNumber;
 
-  saveStageLevelStats("meaning", state.selectedLevel, levelStats);
-  saveStageProgress("meaning", state.selectedLevel, progress);
+  saveStageLevelStats(STAGE_MODE, state.selectedLevel, levelStats);
+  saveStageProgress(STAGE_MODE, state.selectedLevel, progress);
 
   return {
     bestScore: levelStats[stageKey].bestScore,
@@ -513,7 +512,7 @@ function endStage(reason) {
   stopRoundEffects();
 
   const accuracy = getAccuracy();
-  const passed = reason === "completed" && accuracy >= STAGE_CONFIG.meaning.passAccuracy;
+  const passed = reason === "completed" && accuracy >= stageStrategy.config.passAccuracy;
   const resolvedReason = passed
     ? null
     : reason === "timeout" || reason === "lives"
@@ -561,39 +560,7 @@ function moveToNextQuestion() {
  * 处理关卡答题结果并更新反馈。
  */
 function handleAnswer(selectedOption) {
-  if (state.lockInput || state.roundFinished) {
-    return;
-  }
-
-  const currentQuestion = state.questions[state.currentIndex];
-  const isCorrect = selectedOption === currentQuestion.meaning;
-
-  state.lockInput = true;
-  state.answeredCount += 1;
-  setOptionStates(selectedOption, currentQuestion.meaning);
-
-  if (isCorrect) {
-    state.correctCount += 1;
-    state.score += STAGE_CONFIG.meaning.baseScore;
-    elements.feedbackBox.className = "feedback-box is-success";
-    elements.feedbackBox.textContent = `答对了！${currentQuestion.word} = ${currentQuestion.meaning}`;
-  } else {
-    state.lives -= 1;
-    addWrongWord(currentQuestion);
-    elements.feedbackBox.className = "feedback-box is-error";
-    elements.feedbackBox.textContent = `答错了。正确答案是「${currentQuestion.meaning}」`;
-  }
-
-  updateStatusBar();
-  clearFeedbackTimeout();
-  state.feedbackTimeoutId = window.setTimeout(() => {
-    if (!isCorrect && state.lives <= 0) {
-      endStage("lives");
-      return;
-    }
-
-    moveToNextQuestion();
-  }, STAGE_CONFIG.meaning.feedbackDelayMs);
+  handlePrimaryAction({ selectedOption });
 }
 
 /**
@@ -624,14 +591,11 @@ function startTimer() {
 function buildStageQuestionSet(stageNumber, options = {}) {
   const stageWordIds = getStageGroups()[stageNumber - 1] || [];
   const fixedWords = stageWordIds.map((wordId) => getWordById(wordId)).filter(Boolean);
-  const levelWords = getWordsForLevel(state.selectedLevel);
-  const previousOptionsByWordId = options.previousOptionsByWordId || {};
 
-  return shuffle(fixedWords).map((word) => {
-    return createMeaningQuestion(word, levelWords, {
-      distractorPool: levelWords,
-      excludedOptions: previousOptionsByWordId[word.id]
-    });
+  return stageStrategy.buildRound({
+    ...createStageStrategyContext(),
+    words: fixedWords,
+    previousOptionsByWordId: options.previousOptionsByWordId || {}
   });
 }
 
@@ -643,8 +607,8 @@ function prepareRoundState(stageNumber, questions) {
   state.questions = questions;
   state.currentIndex = 0;
   state.score = 0;
-  state.lives = STAGE_CONFIG.meaning.startingLives;
-  state.timeLeft = STAGE_CONFIG.meaning.totalTimeSeconds;
+  state.lives = stageStrategy.config.startingLives;
+  state.timeLeft = stageStrategy.config.totalTimeSeconds;
   state.correctCount = 0;
   state.answeredCount = 0;
   state.wrongWords = [];
@@ -666,7 +630,7 @@ function startStage(stageNumber, options = {}) {
   }
 
   progress.lastPlayedStage = stageNumber;
-  saveStageProgress("meaning", state.selectedLevel, progress);
+  saveStageProgress(STAGE_MODE, state.selectedLevel, progress);
 
   stopRoundEffects();
 
@@ -767,18 +731,7 @@ function bindEvents() {
     if (state.currentScreen !== "game" || state.lockInput || state.roundFinished) {
       return;
     }
-
-    const number = Number(event.key);
-
-    if (number < 1 || number > 4) {
-      return;
-    }
-
-    const button = elements.optionsGrid.querySelectorAll(".option-button")[number - 1];
-
-    if (button) {
-      button.click();
-    }
+    stageStrategy.handleKeydown(createStageStrategyContext(), event);
   });
 
   window.addEventListener("english-game:level-change", handleSharedLevelChange);

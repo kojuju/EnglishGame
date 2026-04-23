@@ -23,6 +23,7 @@
 - 练习模式：`词义选择 / 听写`
 - 闯关模式第一阶段：固定关卡的词义闯关
 - 生存模式第一阶段：不限题量的词义生存，答错即结束并记录最佳纪录
+- 题型策略层：三种玩法页通过 `meaning / dictation` 题型注册表接入，当前闯关和生存仍只启用 `meaning`
 - 设置弹窗，可切换 `初学者 / 小学 / 中学 / 大学 / CET-4 / CET-6`
 - 练习模式的词义选择：每局 10 题，带倒计时、生命值、连击、分数
 - 练习模式的听写：每局 20 词，每词自动播放 3 遍，间隔 5 秒后继续播放
@@ -41,6 +42,7 @@
 - `survival-mode.html`：生存模式页面结构
 - `generated-word-bank.js`：按级别补齐到 1000 词的扩展词库
 - `shared-game.js`：练习模式、闯关模式与生存模式共用的设置、词库和存储工具
+- `game-types.js`：题型注册表，以及 `meaning / dictation` 的可插拔题型策略
 - `shared-layout.js`：公共侧边栏、设置弹窗和导航壳层
 - `stage-word-bank.js`：按级别生成固定 10 词分关数据
 - `styles.css`：样式与响应式布局
@@ -50,4 +52,4 @@
 - `stage-mode.js`：闯关模式逻辑、进度与每关统计
 - `survival-mode.js`：生存模式逻辑、纪录与错词统计
 - `start-game.cmd` / `start-game.ps1`：一键启动本地服务并打开浏览器
-- `requirements\`：需求与设计文档目录（包含 `01-requirements.md` ~ `13-entry-page-and-shared-shell-design.md`）
+- `requirements\`：需求与设计文档目录（包含 `01-requirements.md` ~ `15-game-type-strategy-design.md`）
