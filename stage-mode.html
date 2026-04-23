@@ -9,25 +9,7 @@
 <body>
   <div class="app-shell">
     <div class="app-layout">
-      <aside class="sidebar card">
-        <div class="sidebar-brand">
-          <p class="eyebrow">English Game MVP</p>
-          <h1>英语分级闯关小游戏</h1>
-          <p class="sidebar-copy">左侧切换三种玩法，右侧继续当前级别的正式闯关进度。</p>
-        </div>
-
-        <nav class="sidebar-nav" aria-label="主导航">
-          <button class="sidebar-nav-button" id="open-settings-button" type="button">设置</button>
-          <a class="sidebar-nav-button" href="index.html">练习模式</a>
-          <a class="sidebar-nav-button is-active" href="stage-mode.html" aria-current="page">闯关模式</a>
-          <a class="sidebar-nav-button" href="survival-mode.html">生存模式</a>
-        </nav>
-
-        <div class="sidebar-meta">
-          <p class="level-chip" id="current-level-chip">当前级别：CET-4</p>
-          <p class="sidebar-hint">设置中的级别在练习模式、闯关模式和生存模式之间全局共享。</p>
-        </div>
-      </aside>
+      <div id="shared-sidebar-slot"></div>
 
       <div class="content-shell">
         <header class="app-header page-header">
@@ -204,29 +186,18 @@
     </div>
   </div>
 
-  <section class="modal-backdrop is-hidden" id="settings-modal" aria-hidden="true">
-    <div class="modal-card card" role="dialog" aria-modal="true" aria-labelledby="settings-title">
-      <div class="panel-header">
-        <div>
-          <p class="eyebrow">Settings</p>
-          <h2 id="settings-title">选择英语级别</h2>
-        </div>
-        <button class="icon-button" id="close-settings-button" type="button" aria-label="关闭设置">×</button>
-      </div>
-      <p class="modal-copy">
-        级别切换后，练习模式、闯关模式和生存模式都会切换到对应级别；三者的数据仍会分别保存。
-      </p>
-      <div class="level-options" id="level-options"></div>
-      <div class="action-row modal-actions">
-        <button class="primary-button" id="save-settings-button" type="button">保存设置</button>
-        <button class="secondary-button" id="cancel-settings-button" type="button">取消</button>
-      </div>
-    </div>
-  </section>
+  <div id="shared-settings-slot"></div>
 
   <script src="generated-word-bank.js"></script>
   <script src="words.js"></script>
   <script src="shared-game.js"></script>
+  <script src="shared-layout.js"></script>
+  <script>
+    window.__gameShell = window.GameLayout.mountShell({
+      activeNav: "stage",
+      sidebarCopy: "左侧切换三种玩法，右侧继续当前级别的正式闯关进度。"
+    });
+  </script>
   <script src="stage-word-bank.js"></script>
   <script src="stage-mode.js"></script>
 </body>

@@ -15,7 +15,7 @@
 
 建议保留三个顶级入口页面：
 
-- `index.html`：练习模式主页与现有练习流程
+- `practice-mode.html`：练习模式主页与现有练习流程
 - `stage-mode.html`：闯关模式主页、闯关进行页、闯关结算页
 - `survival-mode.html`：生存模式主页、生存进行页、生存结果页
 
@@ -24,7 +24,7 @@
 1. 练习模式已经有自己的“玩法切换 + 回合逻辑 + 结果页”
 2. 闯关模式已经有自己的“关卡选择 + 解锁进度 + 结算规则”
 3. 生存模式新增后，会引入“无限续题 + 单命终局 + 纪录挑战”这套独立逻辑
-4. 如果继续堆进 `index.html`，页面状态和统计语义会继续膨胀
+4. 如果继续把练习玩法挂在入口页上，页面状态和统计语义会继续膨胀
 
 ## 2.2 左侧侧边栏
 
@@ -37,7 +37,7 @@
 
 交互建议：
 
-- 在 `index.html` 中，`练习模式` 为当前高亮
+- 在 `practice-mode.html` 中，`练习模式` 为当前高亮
 - 在 `stage-mode.html` 中，`闯关模式` 为当前高亮
 - 在 `survival-mode.html` 中，`生存模式` 为当前高亮
 - `设置` 在三个页面中都调用同一套设置弹窗逻辑
@@ -284,7 +284,7 @@ englishGame.survivalWrongWordsByModeAndLevel
 
 建议涉及以下文件：
 
-- `index.html`：补左侧“生存模式”导航
+- `practice-mode.html`：补左侧“生存模式”导航
 - `stage-mode.html`：补左侧“生存模式”导航
 - `survival-mode.html`：新增页面结构
 - `styles.css`：复用现有样式，必要时补少量生存页专属样式
@@ -295,7 +295,7 @@ englishGame.survivalWrongWordsByModeAndLevel
 
 ### 9.1 与练习模式的边界
 
-- 不把生存模式作为 `index.html` 内的新标签页
+- 不把生存模式作为练习模式页内的新标签页
 - 不复用练习模式“固定 10 题一局”的回合假设
 - 不把练习模式成绩自动换算为生存纪录
 

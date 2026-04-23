@@ -130,6 +130,11 @@ button {
   line-height: 1.15;
 }
 
+.brand-link {
+  color: inherit;
+  text-decoration: none;
+}
+
 .sidebar-copy,
 .sidebar-hint,
 .panel-copy {
@@ -350,7 +355,11 @@ button {
   min-width: 140px;
   padding: 14px 20px;
   border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font-weight: 700;
+  text-decoration: none;
 }
 
 .primary-button:disabled,
@@ -446,6 +455,28 @@ button {
 .tips-grid strong {
   display: inline-block;
   margin-bottom: 8px;
+}
+
+.entry-mode-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 20px;
+}
+
+.entry-mode-card {
+  padding: 24px;
+}
+
+.entry-mode-card h3 {
+  margin: 10px 0 8px;
+  font-size: 1.35rem;
+}
+
+.entry-mode-card p {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.65;
 }
 
 .game-card {
@@ -947,6 +978,7 @@ button {
   .result-grid,
   .tips-grid,
   .status-grid,
+  .entry-mode-grid,
   .stage-highlight-grid,
   .stage-list {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -971,6 +1003,7 @@ button {
   .result-grid,
   .tips-grid,
   .status-grid,
+  .entry-mode-grid,
   .stage-highlight-grid,
   .stage-list {
     grid-template-columns: 1fr;

@@ -4,7 +4,7 @@
 
 ## 直接运行
 
-打开 `index.html` 即可开始试玩。
+打开 `index.html` 即可进入入口页，再按需要跳转到练习模式、闯关模式或生存模式。
 
 > 注意：**听写模式**在 `file://` 直接打开时有时也能运行，但不稳定；更推荐通过本地服务器访问（例如 `http://localhost`），以避免浏览器拦截语音能力。
 
@@ -18,7 +18,8 @@
 
 ## 当前版本功能
 
-- 左侧一级导航：`设置 / 练习模式 / 闯关模式 / 生存模式`
+- `index.html` 作为网站入口页，负责玩法介绍与导航跳转
+- 左侧一级导航：`设置 / 首页 / 练习模式 / 闯关模式 / 生存模式`
 - 练习模式：`词义选择 / 听写`
 - 闯关模式第一阶段：固定关卡的词义闯关
 - 生存模式第一阶段：不限题量的词义生存，答错即结束并记录最佳纪录
@@ -34,16 +35,19 @@
 
 ## 文件说明
 
-- `index.html`：练习模式页面结构
+- `index.html`：网站入口页结构
+- `practice-mode.html`：练习模式页面结构
 - `stage-mode.html`：闯关模式页面结构
 - `survival-mode.html`：生存模式页面结构
 - `generated-word-bank.js`：按级别补齐到 1000 词的扩展词库
 - `shared-game.js`：练习模式、闯关模式与生存模式共用的设置、词库和存储工具
+- `shared-layout.js`：公共侧边栏、设置弹窗和导航壳层
 - `stage-word-bank.js`：按级别生成固定 10 词分关数据
 - `styles.css`：样式与响应式布局
 - `words.js`：词库数据
+- `entry-page.js`：入口页当前级别展示与说明刷新
 - `app.js`：练习模式逻辑和本地存储
 - `stage-mode.js`：闯关模式逻辑、进度与每关统计
 - `survival-mode.js`：生存模式逻辑、纪录与错词统计
 - `start-game.cmd` / `start-game.ps1`：一键启动本地服务并打开浏览器
-- `requirements\`：需求与设计文档目录（包含 `01-requirements.md` ~ `11-survival-mode-design.md`）
+- `requirements\`：需求与设计文档目录（包含 `01-requirements.md` ~ `13-entry-page-and-shared-shell-design.md`）
