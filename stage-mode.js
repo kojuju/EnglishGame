@@ -92,6 +92,9 @@ const elements = {
   backHomeButton: document.getElementById("back-home-button")
 };
 
+/**
+ * 转换关卡题目的难度标记。
+ */
 function getDifficultyLabel(difficulty) {
   if (difficulty === "easy") {
     return "easy";
@@ -108,6 +111,9 @@ function getDifficultyLabel(difficulty) {
   return "normal";
 }
 
+/**
+ * 切换闯关模式当前显示的页面。
+ */
 function showScreen(screenName) {
   Object.entries(screens).forEach(([name, node]) => {
     node.classList.toggle("is-active", name === screenName);
@@ -117,18 +123,30 @@ function showScreen(screenName) {
   elements.openSettingsButton.disabled = screenName === "game";
 }
 
+/**
+ * 获取当前级别下的关卡词组列表。
+ */
 function getStageGroups() {
   return STAGE_WORD_BANK.meaning[state.selectedLevel] || [];
 }
 
+/**
+ * 读取当前级别的闯关进度。
+ */
 function getLevelProgress() {
   return getStageProgress("meaning", state.selectedLevel, getStageGroups().length);
 }
 
+/**
+ * 读取当前级别的关卡统计数据。
+ */
 function getLevelStats() {
   return getStageLevelStats("meaning", state.selectedLevel);
 }
 
+/**
+ * 计算首页推荐继续挑战的关卡。
+ */
 function getRecommendedStage(progress) {
   if (progress.unlockedStage > 0) {
     return progress.unlockedStage;
@@ -137,6 +155,9 @@ function getRecommendedStage(progress) {
   return getStageGroups().length > 0 ? 1 : 0;
 }
 
+/**
+ * 计算当前关卡作答正确率。
+ */
 function getAccuracy() {
   if (state.answeredCount === 0) {
     return 0;
@@ -145,6 +166,9 @@ function getAccuracy() {
   return Math.round((state.correctCount / state.answeredCount) * 100);
 }
 
+/**
+ * 刷新闯关首页的级别和说明文案。
+ */
 function updateLevelLabels() {
   const levelMeta = getLevelMeta(state.selectedLevel);
   elements.currentLevelChip.textContent = `当前级别：${levelMeta.label}`;
@@ -152,6 +176,9 @@ function updateLevelLabels() {
   elements.pageTip.textContent = `${levelMeta.label} 当前按固定 10 词分关，过关后可继续解锁下一关。`;
 }
 
+/**
+ * 渲染当前级别的关卡列表和按钮状态。
+ */
 function renderStageList() {
   const stageGroups = getStageGroups();
   const progress = getLevelProgress();
@@ -215,6 +242,9 @@ function renderStageList() {
   });
 }
 
+/**
+ * 刷新闯关首页概览信息。
+ */
 function renderHome() {
   const progress = getLevelProgress();
   const totalStages = getStageGroups().length;
@@ -234,11 +264,17 @@ function renderHome() {
   renderStageList();
 }
 
+/**
+ * 重置关卡内默认反馈文案。
+ */
 function clearFeedback() {
   elements.feedbackBox.className = "feedback-box";
   elements.feedbackBox.textContent = "75 秒内完成 10 题，至少答对 9 题即可通关。";
 }
 
+/**
+ * 刷新闯关中的计时、分数和正确率状态栏。
+ */
 function updateStatusBar() {
   elements.questionProgress.textContent = `第 ${state.currentIndex + 1} / ${state.questions.length} 题`;
   elements.timerValue.textContent = formatTime(Math.max(state.timeLeft, 0));
@@ -247,6 +283,9 @@ function updateStatusBar() {
   elements.accuracyValue.textContent = `${getAccuracy()}%`;
 }
 
+/**
+ * 渲染当前关卡题目和选项。
+ */
 function renderQuestion() {
   const currentQuestion = state.questions[state.currentIndex];
 
@@ -275,6 +314,9 @@ function renderQuestion() {
   updateStatusBar();
 }
 
+/**
+ * 标记当前作答后的选项状态。
+ */
 function setOptionStates(selectedOption, correctOption) {
   const buttons = elements.optionsGrid.querySelectorAll(".option-button");
 
@@ -290,6 +332,9 @@ function setOptionStates(selectedOption, correctOption) {
   });
 }
 
+/**
+ * 记录当前关卡中的错词。
+ */
 function addWrongWord(question) {
   if (state.wrongWords.some((word) => word.id === question.id)) {
     return;
@@ -306,6 +351,9 @@ function addWrongWord(question) {
   });
 }
 
+/**
+ * 清理答题反馈延时器。
+ */
 function clearFeedbackTimeout() {
   if (state.feedbackTimeoutId) {
     window.clearTimeout(state.feedbackTimeoutId);
@@ -313,6 +361,9 @@ function clearFeedbackTimeout() {
   }
 }
 
+/**
+ * 停止关卡倒计时。
+ */
 function stopTimer() {
   if (state.timerId) {
     window.clearInterval(state.timerId);
@@ -320,11 +371,17 @@ function stopTimer() {
   }
 }
 
+/**
+ * 停止当前关卡中的计时和反馈副作用。
+ */
 function stopRoundEffects() {
   stopTimer();
   clearFeedbackTimeout();
 }
 
+/**
+ * 把失败原因标记转换为结算文案。
+ */
 function getFailureReasonLabel(reason) {
   if (reason === "timeout") {
     return "超时";
@@ -341,6 +398,9 @@ function getFailureReasonLabel(reason) {
   return "无";
 }
 
+/**
+ * 生成当前关卡结算总结。
+ */
 function getResultSummary(result) {
   if (result.passed) {
     return result.unlockedNextStage
@@ -359,6 +419,9 @@ function getResultSummary(result) {
   return "已经完成整关，但正确率还没达到 90%，再来一轮会更稳。";
 }
 
+/**
+ * 渲染闯关结算页内容。
+ */
 function renderResult() {
   const result = state.latestResult;
 
@@ -382,6 +445,9 @@ function renderResult() {
   elements.nextStageButton.classList.toggle("is-hidden", !(result.passed && result.hasNextStage));
 }
 
+/**
+ * 保存关卡结果并更新解锁进度与统计。
+ */
 function persistStageResult(result) {
   const totalStages = getStageGroups().length;
   const progress = getStageProgress("meaning", state.selectedLevel, totalStages);
@@ -425,6 +491,9 @@ function persistStageResult(result) {
   };
 }
 
+/**
+ * 结束当前关卡并生成结算结果。
+ */
 function endStage(reason) {
   if (state.roundFinished) {
     return;
@@ -464,6 +533,9 @@ function endStage(reason) {
   showScreen("result");
 }
 
+/**
+ * 推进到下一题，必要时结束关卡。
+ */
 function moveToNextQuestion() {
   if (state.currentIndex >= state.questions.length - 1) {
     endStage("completed");
@@ -475,6 +547,9 @@ function moveToNextQuestion() {
   renderQuestion();
 }
 
+/**
+ * 处理关卡答题结果并更新反馈。
+ */
 function handleAnswer(selectedOption) {
   if (state.lockInput || state.roundFinished) {
     return;
@@ -511,6 +586,9 @@ function handleAnswer(selectedOption) {
   }, STAGE_CONFIG.meaning.feedbackDelayMs);
 }
 
+/**
+ * 启动关卡倒计时。
+ */
 function startTimer() {
   stopTimer();
   state.timerId = window.setInterval(() => {
@@ -530,6 +608,9 @@ function startTimer() {
   }, 1000);
 }
 
+/**
+ * 根据指定关卡构建题目集合。
+ */
 function buildStageQuestionSet(stageNumber, options = {}) {
   const stageWordIds = getStageGroups()[stageNumber - 1] || [];
   const fixedWords = stageWordIds.map((wordId) => getWordById(wordId)).filter(Boolean);
@@ -544,6 +625,9 @@ function buildStageQuestionSet(stageNumber, options = {}) {
   });
 }
 
+/**
+ * 初始化新关卡的运行状态。
+ */
 function prepareRoundState(stageNumber, questions) {
   state.currentStageNumber = stageNumber;
   state.questions = questions;
@@ -559,6 +643,9 @@ function prepareRoundState(stageNumber, questions) {
   state.latestOptionMap = Object.fromEntries(questions.map((question) => [question.id, [...question.options]]));
 }
 
+/**
+ * 开始或重开指定关卡。
+ */
 function startStage(stageNumber, options = {}) {
   const progress = getLevelProgress();
   const isReplay = progress.completedStages.includes(stageNumber);
@@ -587,6 +674,9 @@ function startStage(stageNumber, options = {}) {
   startTimer();
 }
 
+/**
+ * 依据最近结算结果重试当前关卡。
+ */
 function retryCurrentStage() {
   if (!state.latestResult) {
     return;
@@ -597,6 +687,9 @@ function retryCurrentStage() {
   });
 }
 
+/**
+ * 进入下一关。
+ */
 function goToNextStage() {
   if (!state.latestResult || !state.latestResult.passed || !state.latestResult.hasNextStage) {
     return;
@@ -605,16 +698,25 @@ function goToNextStage() {
   startStage(state.latestResult.nextStageNumber);
 }
 
+/**
+ * 平滑滚动到关卡列表区域。
+ */
 function scrollToStageList() {
   elements.stageListSection.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+/**
+ * 退出当前关卡并返回闯关首页。
+ */
 function goHome() {
   stopRoundEffects();
   renderHome();
   showScreen("home");
 }
 
+/**
+ * 重新渲染设置弹窗中的级别选项。
+ */
 function rerenderLevelOptions() {
   renderLevelOptions(elements.levelOptions, state.pendingLevel, (levelId) => {
     state.pendingLevel = levelId;
@@ -622,6 +724,9 @@ function rerenderLevelOptions() {
   });
 }
 
+/**
+ * 打开闯关模式设置弹窗。
+ */
 function openSettings() {
   if (state.currentScreen === "game") {
     return;
@@ -635,6 +740,9 @@ function openSettings() {
   elements.closeSettingsButton.focus();
 }
 
+/**
+ * 关闭闯关模式设置弹窗并恢复滚动。
+ */
 function closeSettingsModal() {
   if (elements.settingsModal.contains(document.activeElement)) {
     document.activeElement.blur();
@@ -649,6 +757,9 @@ function closeSettingsModal() {
   }
 }
 
+/**
+ * 应用新的闯关级别设置并刷新首页。
+ */
 function applyLevelSettings() {
   state.selectedLevel = state.pendingLevel;
   persistSelectedLevel(state.selectedLevel);
@@ -660,6 +771,9 @@ function applyLevelSettings() {
   }
 }
 
+/**
+ * 绑定闯关模式页面的交互事件。
+ */
 function bindEvents() {
   elements.openSettingsButton.addEventListener("click", openSettings);
   elements.closeSettingsButton.addEventListener("click", closeSettingsModal);
@@ -707,6 +821,9 @@ function bindEvents() {
   });
 }
 
+/**
+ * 初始化闯关模式页面。
+ */
 function init() {
   renderHome();
   clearFeedback();

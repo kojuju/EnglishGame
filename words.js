@@ -822,6 +822,9 @@ const LEVEL_OPTIONS = [
   { id: "cet6", label: "CET-6", description: "使用六级进阶词汇，但控制在六级范围内。" }
 ];
 
+/**
+ * 构造补充词库条目，便于批量定义附加单词数据。
+ */
 function supplementalWord(id, level, word, meaning, partOfSpeech, difficulty, phonetic, senses) {
   return { id, level, word, meaning, partOfSpeech, difficulty, phonetic, senses };
 }
@@ -1033,6 +1036,9 @@ const SUPPLEMENTAL_WORD_BANK = [
   ])
 ];
 
+/**
+ * 规范化单词条目结构，补齐音标、词义标签和 senses 信息。
+ */
 function normalizeWordEntry(item) {
   const senses = (item.senses || [
     { partOfSpeech: item.partOfSpeech, meaning: item.meaning }
