@@ -1,5 +1,5 @@
 /**
- * 封装练习模式与闯关模式共用的工具模块，统一向 window.GameShared 暴露能力。
+ * 封装练习模式、闯关模式与生存模式共用的工具模块，统一向 window.GameShared 暴露能力。
  */
 (function () {
   const STORAGE_KEYS = {
@@ -10,7 +10,9 @@
     legacyStatsByLevel: "englishGame.statsByLevel",
     legacyWrongWordsByLevel: "englishGame.wrongWordsByLevel",
     stageProgressByModeAndLevel: "englishGame.stageProgressByModeAndLevel",
-    stageStatsByModeAndLevel: "englishGame.stageStatsByModeAndLevel"
+    stageStatsByModeAndLevel: "englishGame.stageStatsByModeAndLevel",
+    survivalStatsByModeAndLevel: "englishGame.survivalStatsByModeAndLevel",
+    survivalWrongWordsByModeAndLevel: "englishGame.survivalWrongWordsByModeAndLevel"
   };
 
   const DEFAULT_LEVEL = "cet4";
@@ -31,6 +33,16 @@
       startingLives: 2,
       passAccuracy: 90
     }
+  };
+
+  const SURVIVAL_CONFIG = {
+    meaning: {
+      startingLives: 1,
+      baseScore: 100,
+      feedbackDelayMs: 850,
+      recentWordWindowSize: 12
+    },
+    dictation: {}
   };
 
   /**
@@ -431,11 +443,58 @@
     writeJsonStorage(STORAGE_KEYS.stageStatsByModeAndLevel, statsMap);
   }
 
+  /**
+   * 读取按玩法和级别存储的生存模式统计映射。
+   */
+  function getSavedSurvivalStatsMap() {
+    return createModeBucket(readJsonStorage(STORAGE_KEYS.survivalStatsByModeAndLevel, {}));
+  }
+
+  /**
+   * 获取指定玩法和级别下的生存模式统计数据。
+   */
+  function getSurvivalStats(mode, levelId) {
+    const statsMap = getSavedSurvivalStatsMap();
+    const defaults = {
+      bestStreak: 0,
+      bestScore: 0,
+      latestAccuracy: 0,
+      latestAnsweredCount: 0
+    };
+
+    return {
+      ...defaults,
+      ...(statsMap[mode] && statsMap[mode][levelId] ? statsMap[mode][levelId] : {})
+    };
+  }
+
+  /**
+   * 读取按玩法和级别存储的生存模式错词映射。
+   */
+  function getSavedSurvivalWrongWordMap() {
+    return createModeBucket(readJsonStorage(STORAGE_KEYS.survivalWrongWordsByModeAndLevel, {}));
+  }
+
+  /**
+   * 获取指定玩法和级别下的生存模式错词详情列表。
+   */
+  function getSavedSurvivalWrongWords(mode, levelId) {
+    const wrongWordMap = getSavedSurvivalWrongWordMap();
+    const ids = wrongWordMap[mode] && Array.isArray(wrongWordMap[mode][levelId])
+      ? wrongWordMap[mode][levelId]
+      : [];
+
+    return ids
+      .map((id) => getWordById(id))
+      .filter(Boolean);
+  }
+
   window.GameShared = {
     STORAGE_KEYS,
     DEFAULT_LEVEL,
     DEFAULT_MODE,
     STAGE_CONFIG,
+    SURVIVAL_CONFIG,
     LEVEL_OPTIONS,
     WORD_BANK,
     shuffle,
@@ -462,6 +521,10 @@
     getStageProgress,
     saveStageProgress,
     getStageLevelStats,
-    saveStageLevelStats
+    saveStageLevelStats,
+    getSavedSurvivalStatsMap,
+    getSurvivalStats,
+    getSavedSurvivalWrongWordMap,
+    getSavedSurvivalWrongWords
   };
 })();
