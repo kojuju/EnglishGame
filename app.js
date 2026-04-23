@@ -36,7 +36,7 @@ const GAME_CONFIG = {
     submitWindowSeconds: 30,
     speechLang: "en-GB",
     speechRate: 0.82,
-    feedbackDelayMs: 10000
+    feedbackDelayMs: 5000
   }
 };
 
@@ -187,6 +187,9 @@ const elements = {
   rematchButton: document.getElementById("rematch-button")
 };
 
+/**
+ * 根据当前连击数计算额外得分奖励。
+ */
 function getComboBonus(combo) {
   if (combo >= 8) {
     return 100;
@@ -203,6 +206,9 @@ function getComboBonus(combo) {
   return 0;
 }
 
+/**
+ * 把难度标记转换为练习模式界面展示文案。
+ */
 function getDifficultyLabel(difficulty) {
   const labels = {
     easy: "基础",
@@ -213,30 +219,51 @@ function getDifficultyLabel(difficulty) {
   return labels[difficulty] || "基础";
 }
 
+/**
+ * 获取当前玩法对应的文案配置。
+ */
 function getModeMeta(mode) {
   return MODE_META[mode] || MODE_META[DEFAULT_MODE];
 }
 
+/**
+ * 读取已保存的练习级别设置。
+ */
 function getStoredLevel() {
   return getSharedStoredLevel();
 }
 
+/**
+ * 读取已保存的练习玩法设置。
+ */
 function getStoredMode() {
   return getSharedStoredMode(MODE_OPTIONS);
 }
 
+/**
+ * 持久化当前选中的练习级别。
+ */
 function persistSelectedLevel() {
   persistSharedSelectedLevel(state.selectedLevel);
 }
 
+/**
+ * 持久化当前选中的练习玩法。
+ */
 function persistSelectedMode() {
   persistSharedSelectedMode(state.selectedMode);
 }
 
+/**
+ * 检测浏览器是否支持听写所需的语音播放能力。
+ */
 function isSpeechSupported() {
   return typeof window.SpeechSynthesisUtterance !== "undefined" && "speechSynthesis" in window;
 }
 
+/**
+ * 获取听写模式的环境警告提示。
+ */
 function getDictationWarning() {
   if (window.location.protocol === "file:") {
     return "当前是用 file:// 直接打开页面，听写模式可能受浏览器限制；建议改用 http://localhost 方式访问。";
@@ -245,6 +272,9 @@ function getDictationWarning() {
   return "";
 }
 
+/**
+ * 获取听写模式不可用时的原因说明。
+ */
 function getDictationUnavailableReason() {
   if (!isSpeechSupported()) {
     return "当前浏览器不支持语音播放，听写模式暂不可用，请改用支持 SpeechSynthesis 的浏览器。";
@@ -253,10 +283,16 @@ function getDictationUnavailableReason() {
   return "";
 }
 
+/**
+ * 判断当前环境是否可以使用听写模式。
+ */
 function isDictationAvailable() {
   return getDictationUnavailableReason() === "";
 }
 
+/**
+ * 选择最合适的英文语音用于听写播放。
+ */
 function resolveSpeechVoice() {
   if (!isSpeechSupported()) {
     return null;
@@ -269,6 +305,9 @@ function resolveSpeechVoice() {
     || null;
 }
 
+/**
+ * 构建一局词义选择题目。
+ */
 function buildMeaningQuestionSet(levelId) {
   const levelWords = getWordsForLevel(levelId);
   const roundSize = Math.min(GAME_CONFIG.meaning.questionsPerRound, levelWords.length);
@@ -278,6 +317,9 @@ function buildMeaningQuestionSet(levelId) {
     .map((word) => createMeaningQuestion(word, levelWords));
 }
 
+/**
+ * 基于错题构建词义再战题目，并尽量避免复用原选项。
+ */
 function buildMeaningRematchQuestionSet(words, levelId) {
   const levelWords = getWordsForLevel(levelId);
 
@@ -289,6 +331,9 @@ function buildMeaningRematchQuestionSet(words, levelId) {
   });
 }
 
+/**
+ * 构建一局听写题目数据。
+ */
 function buildDictationRound(levelId) {
   const levelWords = getWordsForLevel(levelId);
   const roundSize = Math.min(GAME_CONFIG.dictation.wordsPerRound, levelWords.length);
@@ -306,6 +351,9 @@ function buildDictationRound(levelId) {
     }));
 }
 
+/**
+ * 基于错词构建听写再战题目数据。
+ */
 function buildDictationRematchRound(words) {
   return shuffle(words).map((word) => ({
     id: word.id,
@@ -318,10 +366,16 @@ function buildDictationRematchRound(words) {
   }));
 }
 
+/**
+ * 同步页面头部按钮的可用状态。
+ */
 function updateHeaderState() {
   elements.openSettingsButton.disabled = state.currentScreen === "game";
 }
 
+/**
+ * 切换当前显示的页面屏幕。
+ */
 function showScreen(screenName) {
   Object.entries(screens).forEach(([name, node]) => {
     node.classList.toggle("is-active", name === screenName);
@@ -331,6 +385,9 @@ function showScreen(screenName) {
   updateHeaderState();
 }
 
+/**
+ * 刷新首页玩法切换按钮的选中状态。
+ */
 function renderModeButtons() {
   elements.modeButtons.forEach((button) => {
     const isActive = button.dataset.mode === state.selectedMode;
@@ -339,6 +396,9 @@ function renderModeButtons() {
   });
 }
 
+/**
+ * 刷新当前级别和玩法的展示标签。
+ */
 function updateLevelLabels() {
   const levelMeta = getLevelMeta(state.selectedLevel);
   const modeLabel = MODE_OPTIONS.find((option) => option.id === state.selectedMode)?.label || "词义选择";
@@ -346,6 +406,9 @@ function updateLevelLabels() {
   elements.currentLevelBadge.textContent = `当前玩法：${modeLabel} · 级别：${levelMeta.label}`;
 }
 
+/**
+ * 根据当前玩法更新首页提示卡片。
+ */
 function updateTips(meta) {
   const [tip1, tip2, tip3] = meta.tips;
   elements.tipTitle1.textContent = tip1.title;
@@ -356,6 +419,9 @@ function updateTips(meta) {
   elements.tipCopy3.textContent = tip3.copy;
 }
 
+/**
+ * 刷新首页与当前玩法相关的标题、按钮和提示文案。
+ */
 function updateHomeModeContent() {
   const meta = getModeMeta(state.selectedMode);
   const dictationUnavailableReason = getDictationUnavailableReason();
@@ -382,6 +448,9 @@ function updateHomeModeContent() {
   }
 }
 
+/**
+ * 生成词义列表的 HTML 片段。
+ */
 function createSenseMarkup(senses) {
   return senses.map((sense) => {
     return `
@@ -393,6 +462,9 @@ function createSenseMarkup(senses) {
   }).join("");
 }
 
+/**
+ * 生成错词回顾列表项节点。
+ */
 function createReviewItem(word) {
   const senses = Array.isArray(word.senses) && word.senses.length > 0
     ? word.senses
@@ -418,6 +490,9 @@ function createReviewItem(word) {
   return item;
 }
 
+/**
+ * 刷新首页统计信息和错词回顾区域。
+ */
 function updateHomeStats() {
   const levelStats = getModeStats(state.selectedMode, state.selectedLevel);
   const savedWrongWords = getSavedWrongWords(state.selectedMode, state.selectedLevel);
@@ -446,6 +521,9 @@ function updateHomeStats() {
   });
 }
 
+/**
+ * 获取听写状态栏中的播放标签。
+ */
 function getDictationPlaybackTag() {
   if (state.dictationPlaybackStatus === "ready") {
     return "可提交";
@@ -458,6 +536,9 @@ function getDictationPlaybackTag() {
   return `播放 ${state.dictationPlaybackCount} / ${GAME_CONFIG.dictation.playbackRepeats}`;
 }
 
+/**
+ * 获取听写输入区下方的状态提示文案。
+ */
 function getDictationPlaybackStatusText() {
   const dictationUnavailableReason = getDictationUnavailableReason();
 
@@ -484,6 +565,9 @@ function getDictationPlaybackStatusText() {
   return "准备播放，请稍候。";
 }
 
+/**
+ * 根据听写状态更新输入框、提交按钮和提示信息。
+ */
 function updateDictationControls() {
   const shouldDisableInput = state.lockInput || state.roundFinished || !isDictationAvailable();
   const shouldDisableSubmit = shouldDisableInput || !state.dictationReadyForSubmit;
@@ -497,6 +581,9 @@ function updateDictationControls() {
   elements.dictationSupportNote.classList.toggle("is-hidden", !dictationMessage);
 }
 
+/**
+ * 刷新游戏内状态栏显示。
+ */
 function updateStatusBar() {
   if (state.selectedMode === "dictation") {
     elements.questionProgress.textContent = `第 ${state.currentIndex + 1} / ${state.questions.length} 词`;
@@ -527,11 +614,17 @@ function updateStatusBar() {
   elements.comboValue.textContent = String(state.combo);
 }
 
+/**
+ * 重置反馈提示为当前玩法的默认文案。
+ */
 function clearFeedback() {
   elements.feedbackBox.className = "feedback-box";
   elements.feedbackBox.textContent = getModeMeta(state.selectedMode).defaultFeedback;
 }
 
+/**
+ * 渲染当前词义选择题。
+ */
 function renderMeaningQuestion() {
   const currentQuestion = state.questions[state.currentIndex];
 
@@ -562,6 +655,9 @@ function renderMeaningQuestion() {
   updateStatusBar();
 }
 
+/**
+ * 渲染当前听写题并启动播放流程。
+ */
 function renderDictationQuestion() {
   const currentQuestion = state.questions[state.currentIndex];
 
@@ -596,6 +692,9 @@ function renderDictationQuestion() {
   }
 }
 
+/**
+ * 根据当前玩法分发到对应的题目渲染逻辑。
+ */
 function renderQuestion() {
   if (state.selectedMode === "dictation") {
     renderDictationQuestion();
@@ -605,6 +704,9 @@ function renderQuestion() {
   renderMeaningQuestion();
 }
 
+/**
+ * 标记词义选项的正确、错误和禁用状态。
+ */
 function setOptionStates(selectedOption, correctOption) {
   const buttons = elements.optionsGrid.querySelectorAll(".option-button");
 
@@ -620,6 +722,9 @@ function setOptionStates(selectedOption, correctOption) {
   });
 }
 
+/**
+ * 记录错题或更新已有错题的附加信息。
+ */
 function addWrongWord(question, details = {}) {
   const existingWord = state.wrongWords.find((word) => word.id === question.id);
   const payload = {
@@ -640,6 +745,9 @@ function addWrongWord(question, details = {}) {
   state.wrongWords.push(payload);
 }
 
+/**
+ * 清理题目反馈后的延时跳转。
+ */
 function clearFeedbackTimeout() {
   if (state.feedbackTimeoutId) {
     window.clearTimeout(state.feedbackTimeoutId);
@@ -647,6 +755,9 @@ function clearFeedbackTimeout() {
   }
 }
 
+/**
+ * 停止词义模式倒计时。
+ */
 function stopTimer() {
   if (state.timerId) {
     window.clearInterval(state.timerId);
@@ -654,6 +765,9 @@ function stopTimer() {
   }
 }
 
+/**
+ * 停止听写提交倒计时。
+ */
 function stopDictationSubmitTimer() {
   if (state.dictationSubmitTimerId) {
     window.clearInterval(state.dictationSubmitTimerId);
@@ -661,6 +775,9 @@ function stopDictationSubmitTimer() {
   }
 }
 
+/**
+ * 停止当前听写播放及等待中的下一次播放。
+ */
 function stopDictationPlayback() {
   state.speechRunId += 1;
   state.dictationReadyForSubmit = false;
@@ -675,6 +792,9 @@ function stopDictationPlayback() {
   }
 }
 
+/**
+ * 停止当前对局中的所有计时和播放副作用。
+ */
 function stopActiveRoundEffects() {
   stopTimer();
   stopDictationSubmitTimer();
@@ -682,6 +802,9 @@ function stopActiveRoundEffects() {
   stopDictationPlayback();
 }
 
+/**
+ * 启动听写提交倒计时，并在超时后自动提交。
+ */
 function startDictationSubmitCountdown() {
   stopDictationSubmitTimer();
   state.dictationSubmitSecondsLeft = GAME_CONFIG.dictation.submitWindowSeconds;
@@ -707,6 +830,9 @@ function startDictationSubmitCountdown() {
   }, 1000);
 }
 
+/**
+ * 推进到下一道词义题，必要时结束本局。
+ */
 function moveToNextMeaningQuestion() {
   if (state.roundFinished) {
     return;
@@ -722,6 +848,9 @@ function moveToNextMeaningQuestion() {
   renderQuestion();
 }
 
+/**
+ * 推进到下一道听写题，必要时结束本局。
+ */
 function moveToNextDictationQuestion() {
   if (state.roundFinished) {
     return;
@@ -737,6 +866,9 @@ function moveToNextDictationQuestion() {
   renderQuestion();
 }
 
+/**
+ * 处理词义选择题的作答结果和反馈。
+ */
 function handleMeaningAnswer(selectedOption) {
   if (state.lockInput || state.roundFinished) {
     return;
@@ -773,10 +905,16 @@ function handleMeaningAnswer(selectedOption) {
   }, GAME_CONFIG.meaning.feedbackDelayMs);
 }
 
+/**
+ * 统一标准化听写答案，便于忽略大小写比较。
+ */
 function normalizeWordAnswer(value) {
   return value.trim().toLowerCase();
 }
 
+/**
+ * 处理听写提交、判题和反馈。
+ */
 function handleDictationSubmit({ auto = false } = {}) {
   if (state.selectedMode !== "dictation" || state.lockInput || state.roundFinished || !state.dictationReadyForSubmit) {
     return;
@@ -817,6 +955,9 @@ function handleDictationSubmit({ auto = false } = {}) {
   }, GAME_CONFIG.dictation.feedbackDelayMs);
 }
 
+/**
+ * 根据词义模式正确率生成结算总结。
+ */
 function getMeaningResultSummary(accuracy) {
   if (accuracy >= 85) {
     return "这局很稳，你已经能快速认出不少高频词了。";
@@ -829,6 +970,9 @@ function getMeaningResultSummary(accuracy) {
   return "别怕，这一局已经帮你把重点词过了一遍，马上再刷效果最好。";
 }
 
+/**
+ * 根据听写模式正确率生成结算总结。
+ */
 function getDictationResultSummary(accuracy) {
   if (accuracy >= 90) {
     return "这轮听写很稳，拼写和发音对应关系已经越来越熟了。";
@@ -841,6 +985,9 @@ function getDictationResultSummary(accuracy) {
   return "先别急，听写本来就比选择题更难，把这一轮错词复盘一遍最有效。";
 }
 
+/**
+ * 根据词义错题再战正确率生成结算总结。
+ */
 function getMeaningRematchSummary(accuracy) {
   if (accuracy === 100) {
     return "这轮错题再战已经全部纠正，刚才的薄弱点补得很及时。";
@@ -853,6 +1000,9 @@ function getMeaningRematchSummary(accuracy) {
   return "这轮错题再战说明这些词还不够稳，再练一次会更有效。";
 }
 
+/**
+ * 根据听写错题再战正确率生成结算总结。
+ */
 function getDictationRematchSummary(accuracy) {
   if (accuracy === 100) {
     return "这轮错题听写已经全部写对，拼写修正得很到位。";
@@ -865,6 +1015,9 @@ function getDictationRematchSummary(accuracy) {
   return "这些错词的拼写还需要继续强化，建议再战一次或回顾后再练。";
 }
 
+/**
+ * 渲染当前对局的结算内容和错词回顾。
+ */
 function renderResult() {
   const accuracy = state.answeredCount === 0
     ? 0
@@ -924,6 +1077,9 @@ function renderResult() {
   });
 }
 
+/**
+ * 启动词义模式整局倒计时。
+ */
 function startTimer() {
   stopTimer();
 
@@ -942,6 +1098,9 @@ function startTimer() {
   }, 1000);
 }
 
+/**
+ * 保存本局练习统计和错词记录。
+ */
 function saveRoundSummary() {
   if (state.roundKind === "rematch") {
     return;
@@ -981,6 +1140,9 @@ function saveRoundSummary() {
   writeJsonStorage(STORAGE_KEYS.wrongWordsByModeAndLevel, wrongWordMap);
 }
 
+/**
+ * 结束当前对局并切到结算页。
+ */
 function endGame() {
   if (state.roundFinished) {
     return;
@@ -994,6 +1156,9 @@ function endGame() {
   showScreen("result");
 }
 
+/**
+ * 重置并初始化新一局练习的状态数据。
+ */
 function prepareRoundState(items) {
   state.questions = items;
   state.roundKind = "normal";
@@ -1014,6 +1179,9 @@ function prepareRoundState(items) {
   state.dictationSubmitSecondsLeft = GAME_CONFIG.dictation.submitWindowSeconds;
 }
 
+/**
+ * 按当前玩法和级别开始新一局练习。
+ */
 function startGame() {
   if (state.selectedMode === "dictation" && !isDictationAvailable()) {
     updateHomeStats();
@@ -1039,6 +1207,9 @@ function startGame() {
   }
 }
 
+/**
+ * 基于当前错词开始再战练习。
+ */
 function startWrongAnswerRematch() {
   if (state.wrongWords.length === 0) {
     return;
@@ -1068,6 +1239,9 @@ function startWrongAnswerRematch() {
   }
 }
 
+/**
+ * 切换首页错词回顾面板的展开状态。
+ */
 function toggleHomeReview() {
   if (elements.toggleReviewButton.disabled) {
     return;
@@ -1076,6 +1250,9 @@ function toggleHomeReview() {
   elements.homeReviewPanel.classList.toggle("is-hidden");
 }
 
+/**
+ * 打开练习模式的设置弹窗。
+ */
 function openSettingsModal() {
   if (state.currentScreen === "game") {
     return;
@@ -1089,6 +1266,9 @@ function openSettingsModal() {
   elements.closeSettingsButton.focus();
 }
 
+/**
+ * 关闭设置弹窗并恢复页面滚动。
+ */
 function closeSettingsModal() {
   if (elements.settingsModal.contains(document.activeElement)) {
     document.activeElement.blur();
@@ -1103,6 +1283,9 @@ function closeSettingsModal() {
   }
 }
 
+/**
+ * 重新渲染设置弹窗中的级别选项。
+ */
 function refreshLevelOptions() {
   renderLevelOptions(elements.levelOptions, state.pendingLevel, (levelId) => {
     state.pendingLevel = levelId;
@@ -1110,6 +1293,9 @@ function refreshLevelOptions() {
   });
 }
 
+/**
+ * 应用设置弹窗中选择的级别并刷新首页。
+ */
 function applyLevelSettings() {
   state.selectedLevel = state.pendingLevel;
   persistSelectedLevel();
@@ -1117,6 +1303,9 @@ function applyLevelSettings() {
   closeSettingsModal();
 }
 
+/**
+ * 切换练习玩法并更新首页内容。
+ */
 function selectMode(mode) {
   if (state.currentScreen === "game" || !MODE_OPTIONS.some((option) => option.id === mode)) {
     return;
@@ -1127,6 +1316,9 @@ function selectMode(mode) {
   updateHomeStats();
 }
 
+/**
+ * 播放单词发音，并串联听写多遍播放流程。
+ */
 function speakWord(word, runId) {
   if (
     state.roundFinished
@@ -1187,6 +1379,9 @@ function speakWord(word, runId) {
   window.speechSynthesis.speak(utterance);
 }
 
+/**
+ * 初始化当前单词的听写播放状态并开始播放。
+ */
 function startDictationPlayback(word) {
   stopDictationPlayback();
   stopDictationSubmitTimer();
@@ -1206,12 +1401,18 @@ function startDictationPlayback(word) {
   speakWord(word, state.speechRunId);
 }
 
+/**
+ * 退出当前对局并返回练习首页。
+ */
 function goHome() {
   stopActiveRoundEffects();
   updateHomeStats();
   showScreen("home");
 }
 
+/**
+ * 绑定练习模式页面的交互事件。
+ */
 function bindEvents() {
   elements.startButton.addEventListener("click", startGame);
   elements.playAgainButton.addEventListener("click", startGame);
@@ -1282,6 +1483,9 @@ function bindEvents() {
   }
 }
 
+/**
+ * 初始化练习模式页面状态并完成首次渲染。
+ */
 function init() {
   state.selectedLevel = getStoredLevel();
   state.pendingLevel = state.selectedLevel;
