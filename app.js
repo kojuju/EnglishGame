@@ -2,6 +2,8 @@ const {
   STORAGE_KEYS,
   DEFAULT_LEVEL,
   DEFAULT_MODE,
+  PROFILE_CHANGE_EVENT,
+  PROFILE_SWITCH_REQUEST_EVENT,
   shuffle,
   escapeHtml,
   formatTime,
@@ -826,6 +828,39 @@ function stopActiveRoundEffects() {
   getSelectedModeStrategy().stopEffects(createPracticeStrategyContext());
 }
 
+function resetTransientRoundState() {
+  stopActiveRoundEffects();
+  state.questions = [];
+  state.roundKind = "normal";
+  state.currentIndex = 0;
+  state.score = 0;
+  state.combo = 0;
+  state.bestCombo = 0;
+  state.lives = GAME_CONFIG.meaning.startingLives;
+  state.timeLeft = GAME_CONFIG.meaning.totalTimeSeconds;
+  state.correctCount = 0;
+  state.answeredCount = 0;
+  state.wrongWords = [];
+  state.lockInput = false;
+  state.roundFinished = false;
+  state.dictationPlaybackCount = 0;
+  state.dictationPlaybackStatus = "idle";
+  state.dictationReadyForSubmit = false;
+  state.dictationSubmitSecondsLeft = GAME_CONFIG.dictation.submitWindowSeconds;
+  elements.dictationInput.value = "";
+}
+
+function resetPracticeViewFromProfile() {
+  state.selectedLevel = getStoredLevel();
+  state.pendingLevel = state.selectedLevel;
+  state.selectedMode = getStoredMode();
+  resetTransientRoundState();
+  elements.homeReviewPanel.classList.add("is-hidden");
+  clearFeedback();
+  updateHomeStats();
+  showScreen("home");
+}
+
 /**
  * 启动听写提交倒计时，并在超时后自动提交。
  */
@@ -1310,6 +1345,46 @@ function handleSharedLevelChange(event) {
   updateHomeStats();
 }
 
+function getProfileActionWarning(type) {
+  if (type === "delete-current-profile") {
+    return "删除当前档案将放弃当前局，并切换到其他档案，确定继续吗？";
+  }
+
+  if (type === "reset-current-profile") {
+    return "重置当前档案将放弃当前局，并清空该档案的长期学习数据，确定继续吗？";
+  }
+
+  return "切换档案将放弃当前局，确定继续吗？";
+}
+
+function handleProfileSwitchRequest(event) {
+  const detail = event.detail;
+
+  if (!detail || typeof detail.execute !== "function") {
+    return;
+  }
+
+  detail.handled = true;
+
+  if (state.currentScreen !== "game") {
+    detail.execute();
+    return;
+  }
+
+  const confirmed = window.confirm(getProfileActionWarning(detail.type));
+
+  if (!confirmed) {
+    return;
+  }
+
+  resetTransientRoundState();
+  detail.execute();
+}
+
+function handleProfileChange() {
+  resetPracticeViewFromProfile();
+}
+
 /**
  * 绑定练习模式页面的交互事件。
  */
@@ -1350,6 +1425,8 @@ function bindEvents() {
   }
 
   window.addEventListener("english-game:level-change", handleSharedLevelChange);
+  window.addEventListener(PROFILE_SWITCH_REQUEST_EVENT, handleProfileSwitchRequest);
+  window.addEventListener(PROFILE_CHANGE_EVENT, handleProfileChange);
 }
 
 /**

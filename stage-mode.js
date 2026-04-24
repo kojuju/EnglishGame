@@ -1,5 +1,7 @@
 const {
   STAGE_CONFIG,
+  PROFILE_CHANGE_EVENT,
+  PROFILE_SWITCH_REQUEST_EVENT,
   escapeHtml,
   formatTime,
   shuffle,
@@ -388,6 +390,32 @@ function stopRoundEffects() {
   clearFeedbackTimeout();
 }
 
+function resetStageSessionState() {
+  stopRoundEffects();
+  state.currentStageNumber = 1;
+  state.questions = [];
+  state.currentIndex = 0;
+  state.score = 0;
+  state.lives = stageStrategy.config.startingLives;
+  state.timeLeft = stageStrategy.config.totalTimeSeconds;
+  state.correctCount = 0;
+  state.answeredCount = 0;
+  state.wrongWords = [];
+  state.lockInput = false;
+  state.roundFinished = false;
+  state.latestOptionMap = {};
+  state.latestResult = null;
+}
+
+function resetStageViewFromProfile() {
+  state.selectedLevel = getStoredLevel();
+  state.pendingLevel = state.selectedLevel;
+  resetStageSessionState();
+  clearFeedback();
+  renderHome();
+  showScreen("home");
+}
+
 /**
  * 把失败原因标记转换为结算文案。
  */
@@ -710,6 +738,46 @@ function handleSharedLevelChange(event) {
   }
 }
 
+function getProfileActionWarning(type) {
+  if (type === "delete-current-profile") {
+    return "删除当前档案将放弃正在进行的闯关，并切换到其他档案，确定继续吗？";
+  }
+
+  if (type === "reset-current-profile") {
+    return "重置当前档案将放弃正在进行的闯关，并清空该档案的长期学习数据，确定继续吗？";
+  }
+
+  return "切换档案将放弃正在进行的闯关，确定继续吗？";
+}
+
+function handleProfileSwitchRequest(event) {
+  const detail = event.detail;
+
+  if (!detail || typeof detail.execute !== "function") {
+    return;
+  }
+
+  detail.handled = true;
+
+  if (state.currentScreen !== "game") {
+    detail.execute();
+    return;
+  }
+
+  const confirmed = window.confirm(getProfileActionWarning(detail.type));
+
+  if (!confirmed) {
+    return;
+  }
+
+  resetStageSessionState();
+  detail.execute();
+}
+
+function handleProfileChange() {
+  resetStageViewFromProfile();
+}
+
 /**
  * 绑定闯关模式页面的交互事件。
  */
@@ -735,6 +803,8 @@ function bindEvents() {
   });
 
   window.addEventListener("english-game:level-change", handleSharedLevelChange);
+  window.addEventListener(PROFILE_SWITCH_REQUEST_EVENT, handleProfileSwitchRequest);
+  window.addEventListener(PROFILE_CHANGE_EVENT, handleProfileChange);
 }
 
 /**

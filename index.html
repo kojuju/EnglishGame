@@ -18,16 +18,18 @@
             <h1>选择你的学习玩法</h1>
           </div>
           <div class="header-actions">
-            <p class="level-chip" id="entry-page-level-chip">当前共享级别：CET-4</p>
+            <p class="level-chip" id="entry-page-profile-chip">当前档案：默认档案</p>
+            <p class="level-chip" id="entry-page-level-chip">当前档案级别：CET-4</p>
           </div>
         </header>
 
         <main>
           <section class="hero-card card">
-            <p class="hero-badge" id="entry-level-badge">当前全局级别：CET-4</p>
+            <p class="hero-badge" id="entry-profile-badge">当前档案：默认档案</p>
+            <p class="hero-badge entry-secondary-badge" id="entry-level-badge">当前档案级别：CET-4</p>
             <h2>首页只负责导览，真正的玩法都在独立页面里</h2>
             <p class="hero-copy" id="entry-level-summary">
-              现在的全局级别是 CET-4。进入练习、闯关或生存页面后，都会直接使用这一套词库设置。
+              当前档案是默认档案，当前级别是 CET-4。进入练习、闯关或生存页面后，都会直接使用这一档案下的设置与学习记录。
             </p>
             <div class="action-row">
               <a class="primary-button" href="practice-mode.html">进入练习模式</a>
@@ -67,26 +69,26 @@
 
           <section class="card tips-panel">
             <div class="panel-header">
-              <div>
-                <h2>使用方式</h2>
-                <p class="panel-copy">先在左侧设置级别，再选择你想进入的玩法页面。</p>
+                <div>
+                  <h2>使用方式</h2>
+                  <p class="panel-copy">先在左侧管理档案与级别，再选择你想进入的玩法页面。</p>
+                </div>
               </div>
-            </div>
-            <div class="tips-grid">
-              <article>
-                <strong>1. 先设置级别</strong>
-                <p>级别只需要设置一次，三种玩法都会共享这套词库范围。</p>
-              </article>
-              <article>
-                <strong>2. 再选玩法</strong>
-                <p>练习、闯关、生存现在都是各自独立的顶级页面，不再挤在首页里。</p>
-              </article>
-              <article>
-                <strong>3. 随时切换</strong>
-                <p>侧边栏导航保持统一，后续新增菜单项时也只需要改共享壳层。</p>
-              </article>
-            </div>
-          </section>
+              <div class="tips-grid">
+                <article>
+                  <strong>1. 先确认档案</strong>
+                  <p>同一浏览器里可以切换不同本地档案，每个档案都有独立学习记录。</p>
+                </article>
+                <article>
+                  <strong>2. 再设置级别</strong>
+                  <p>级别只在当前档案内共享，练习、闯关、生存都会沿用这一套词库范围。</p>
+                </article>
+                <article>
+                  <strong>3. 最后选玩法</strong>
+                  <p>练习、闯关、生存仍是独立页面，侧边栏会统一展示当前档案和导航入口。</p>
+                </article>
+              </div>
+            </section>
         </main>
       </div>
     </div>
@@ -102,7 +104,7 @@
     window.__gameShell = window.GameLayout.mountShell({
       activeNav: "home",
       sidebarCopy: "先在入口页理解三种玩法，再进入对应页面开始自由练习、闯关或冲纪录。",
-      sidebarHint: "设置中的级别会在练习模式、闯关模式和生存模式之间全局共享。"
+      sidebarHint: "同一档案内的级别会在三种玩法之间共享，不同档案彼此隔离保存。"
     });
   </script>
   <script src="entry-page.js"></script>

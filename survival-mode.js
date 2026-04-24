@@ -1,6 +1,8 @@
 const {
   STORAGE_KEYS,
   DEFAULT_LEVEL,
+  PROFILE_CHANGE_EVENT,
+  PROFILE_SWITCH_REQUEST_EVENT,
   SURVIVAL_CONFIG,
   shuffle,
   escapeHtml,
@@ -211,6 +213,33 @@ function stopRoundEffects() {
   clearFeedbackTimeout();
 }
 
+function resetSurvivalSessionState() {
+  stopRoundEffects();
+  state.levelWords = [];
+  state.questionQueue = [];
+  state.recentWordIds = [];
+  state.currentQuestion = null;
+  state.currentIndex = 0;
+  state.answeredCount = 0;
+  state.correctCount = 0;
+  state.score = 0;
+  state.wrongWords = [];
+  state.latestOptionMap = {};
+  state.latestResult = null;
+  state.lockInput = false;
+  state.roundFinished = false;
+}
+
+function resetSurvivalViewFromProfile() {
+  state.selectedLevel = getStoredLevel();
+  state.pendingLevel = state.selectedLevel;
+  resetSurvivalSessionState();
+  elements.homeReviewPanel.classList.add("is-hidden");
+  clearFeedback();
+  updateHomeStats();
+  showScreen("home");
+}
+
 function setOptionStates(selectedOption, correctOption) {
   const buttons = elements.optionsGrid.querySelectorAll(".option-button");
 
@@ -419,6 +448,46 @@ function handleSharedLevelChange(event) {
   }
 }
 
+function getProfileActionWarning(type) {
+  if (type === "delete-current-profile") {
+    return "删除当前档案将放弃正在进行的生存挑战，并切换到其他档案，确定继续吗？";
+  }
+
+  if (type === "reset-current-profile") {
+    return "重置当前档案将放弃正在进行的生存挑战，并清空该档案的长期学习数据，确定继续吗？";
+  }
+
+  return "切换档案将放弃正在进行的生存挑战，确定继续吗？";
+}
+
+function handleProfileSwitchRequest(event) {
+  const detail = event.detail;
+
+  if (!detail || typeof detail.execute !== "function") {
+    return;
+  }
+
+  detail.handled = true;
+
+  if (state.currentScreen !== "game") {
+    detail.execute();
+    return;
+  }
+
+  const confirmed = window.confirm(getProfileActionWarning(detail.type));
+
+  if (!confirmed) {
+    return;
+  }
+
+  resetSurvivalSessionState();
+  detail.execute();
+}
+
+function handleProfileChange() {
+  resetSurvivalViewFromProfile();
+}
+
 function goHome() {
   stopRoundEffects();
   updateHomeStats();
@@ -440,6 +509,8 @@ function bindEvents() {
   });
 
   window.addEventListener("english-game:level-change", handleSharedLevelChange);
+  window.addEventListener(PROFILE_SWITCH_REQUEST_EVENT, handleProfileSwitchRequest);
+  window.addEventListener(PROFILE_CHANGE_EVENT, handleProfileChange);
 }
 
 function init() {

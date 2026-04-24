@@ -3,6 +3,7 @@
  */
 (function () {
   const STORAGE_KEYS = {
+    profileStore: "englishGame.profileStore",
     selectedLevel: "englishGame.selectedLevel",
     selectedMode: "englishGame.selectedMode",
     statsByModeAndLevel: "englishGame.statsByModeAndLevel",
@@ -15,8 +16,13 @@
     survivalWrongWordsByModeAndLevel: "englishGame.survivalWrongWordsByModeAndLevel"
   };
 
+  const PROFILE_STORE_VERSION = 1;
+  const PROFILE_CHANGE_EVENT = "english-game:profile-change";
+  const PROFILE_UPDATE_EVENT = "english-game:profile-update";
+  const PROFILE_SWITCH_REQUEST_EVENT = "english-game:profile-switch-request";
   const DEFAULT_LEVEL = "cet4";
   const DEFAULT_MODE = "meaning";
+  const DEFAULT_PROFILE_NAME = "默认档案";
 
   const STAGE_CONFIG = {
     meaning: {
@@ -44,6 +50,626 @@
     },
     dictation: {}
   };
+
+  function isObject(value) {
+    return value !== null && typeof value === "object" && !Array.isArray(value);
+  }
+
+  function cloneValue(value) {
+    if (value === null || typeof value !== "object") {
+      return value;
+    }
+
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function getNowTimestamp() {
+    return new Date().toISOString();
+  }
+
+  function isValidTimestamp(value) {
+    return typeof value === "string" && !Number.isNaN(Date.parse(value));
+  }
+
+  function normalizeProfileName(name, fallbackName = DEFAULT_PROFILE_NAME) {
+    const normalized = String(name || "").trim();
+
+    if (!normalized) {
+      return fallbackName;
+    }
+
+    return normalized;
+  }
+
+  function normalizeLevelId(levelId) {
+    return LEVEL_OPTIONS.some((option) => option.id === levelId) ? levelId : DEFAULT_LEVEL;
+  }
+
+  function normalizeModeId(modeId) {
+    return typeof modeId === "string" && modeId.trim() ? modeId : DEFAULT_MODE;
+  }
+
+  function createModeBucket(rawValue) {
+    const value = isObject(rawValue) ? rawValue : {};
+    return {
+      meaning: isObject(value.meaning) ? { ...value.meaning } : {},
+      dictation: isObject(value.dictation) ? { ...value.dictation } : {}
+    };
+  }
+
+  function createEmptyPracticeData() {
+    return {
+      statsByModeAndLevel: createModeBucket(),
+      wrongWordsByModeAndLevel: createModeBucket()
+    };
+  }
+
+  function createEmptyStageData() {
+    return {
+      progressByModeAndLevel: createModeBucket(),
+      statsByModeAndLevel: createModeBucket()
+    };
+  }
+
+  function createEmptySurvivalData() {
+    return {
+      statsByModeAndLevel: createModeBucket(),
+      wrongWordsByModeAndLevel: createModeBucket()
+    };
+  }
+
+  function createProfileId() {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return `profile-${crypto.randomUUID()}`;
+    }
+
+    return `profile-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  function createEmptyProfile(name = DEFAULT_PROFILE_NAME, options = {}) {
+    const createdAt = isValidTimestamp(options.createdAt) ? options.createdAt : getNowTimestamp();
+    const lastActiveAt = isValidTimestamp(options.lastActiveAt) ? options.lastActiveAt : createdAt;
+    return {
+      id: typeof options.id === "string" && options.id.trim() ? options.id : createProfileId(),
+      name: normalizeProfileName(name),
+      createdAt,
+      lastActiveAt,
+      settings: {
+        selectedLevel: normalizeLevelId(options.selectedLevel),
+        selectedMode: normalizeModeId(options.selectedMode)
+      },
+      practice: createEmptyPracticeData(),
+      stage: createEmptyStageData(),
+      survival: createEmptySurvivalData()
+    };
+  }
+
+  function normalizeProfile(rawProfile, fallbackId) {
+    const createdAt = isValidTimestamp(rawProfile && rawProfile.createdAt)
+      ? rawProfile.createdAt
+      : getNowTimestamp();
+    const profile = createEmptyProfile(rawProfile && rawProfile.name, {
+      id: rawProfile && rawProfile.id ? rawProfile.id : fallbackId,
+      createdAt,
+      lastActiveAt: rawProfile && rawProfile.lastActiveAt,
+      selectedLevel: rawProfile && rawProfile.settings ? rawProfile.settings.selectedLevel : undefined,
+      selectedMode: rawProfile && rawProfile.settings ? rawProfile.settings.selectedMode : undefined
+    });
+
+    return {
+      ...profile,
+      practice: {
+        statsByModeAndLevel: createModeBucket(rawProfile && rawProfile.practice ? rawProfile.practice.statsByModeAndLevel : undefined),
+        wrongWordsByModeAndLevel: createModeBucket(rawProfile && rawProfile.practice ? rawProfile.practice.wrongWordsByModeAndLevel : undefined)
+      },
+      stage: {
+        progressByModeAndLevel: createModeBucket(rawProfile && rawProfile.stage ? rawProfile.stage.progressByModeAndLevel : undefined),
+        statsByModeAndLevel: createModeBucket(rawProfile && rawProfile.stage ? rawProfile.stage.statsByModeAndLevel : undefined)
+      },
+      survival: {
+        statsByModeAndLevel: createModeBucket(rawProfile && rawProfile.survival ? rawProfile.survival.statsByModeAndLevel : undefined),
+        wrongWordsByModeAndLevel: createModeBucket(rawProfile && rawProfile.survival ? rawProfile.survival.wrongWordsByModeAndLevel : undefined)
+      }
+    };
+  }
+
+  function normalizeProfileStore(rawStore) {
+    if (!isObject(rawStore) || !isObject(rawStore.profiles)) {
+      return null;
+    }
+
+    const entries = Object.entries(rawStore.profiles)
+      .map(([profileId, profile]) => [profileId, normalizeProfile(profile, profileId)]);
+
+    if (entries.length === 0) {
+      return null;
+    }
+
+    const profiles = Object.fromEntries(entries);
+    const fallbackCurrentProfileId = entries[0][0];
+    const currentProfileId = typeof rawStore.currentProfileId === "string" && profiles[rawStore.currentProfileId]
+      ? rawStore.currentProfileId
+      : fallbackCurrentProfileId;
+
+    return {
+      version: PROFILE_STORE_VERSION,
+      currentProfileId,
+      profiles
+    };
+  }
+
+  function readRawJsonStorage(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function writeRawJsonStorage(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  }
+
+  function listProfilesFromStore(store) {
+    return Object.values(store.profiles).sort((left, right) => {
+      const leftTime = Date.parse(left.createdAt);
+      const rightTime = Date.parse(right.createdAt);
+
+      if (leftTime !== rightTime) {
+        return leftTime - rightTime;
+      }
+
+      return left.name.localeCompare(right.name, "zh-CN");
+    });
+  }
+
+  function hasLegacyStorageData() {
+    const legacyKeys = [
+      STORAGE_KEYS.selectedLevel,
+      STORAGE_KEYS.selectedMode,
+      STORAGE_KEYS.statsByModeAndLevel,
+      STORAGE_KEYS.wrongWordsByModeAndLevel,
+      STORAGE_KEYS.legacyStatsByLevel,
+      STORAGE_KEYS.legacyWrongWordsByLevel,
+      STORAGE_KEYS.stageProgressByModeAndLevel,
+      STORAGE_KEYS.stageStatsByModeAndLevel,
+      STORAGE_KEYS.survivalStatsByModeAndLevel,
+      STORAGE_KEYS.survivalWrongWordsByModeAndLevel
+    ];
+
+    return legacyKeys.some((key) => localStorage.getItem(key) !== null);
+  }
+
+  function getLegacySelectedLevel() {
+    return normalizeLevelId(localStorage.getItem(STORAGE_KEYS.selectedLevel));
+  }
+
+  function getLegacySelectedMode() {
+    return normalizeModeId(localStorage.getItem(STORAGE_KEYS.selectedMode));
+  }
+
+  function getLegacyPracticeStatsMap() {
+    const saved = readRawJsonStorage(STORAGE_KEYS.statsByModeAndLevel, null);
+
+    if (saved) {
+      return createModeBucket(saved);
+    }
+
+    const legacy = readRawJsonStorage(STORAGE_KEYS.legacyStatsByLevel, {});
+    return {
+      meaning: isObject(legacy) ? { ...legacy } : {},
+      dictation: {}
+    };
+  }
+
+  function getLegacyPracticeWrongWordMap() {
+    const saved = readRawJsonStorage(STORAGE_KEYS.wrongWordsByModeAndLevel, null);
+
+    if (saved) {
+      return createModeBucket(saved);
+    }
+
+    const legacy = readRawJsonStorage(STORAGE_KEYS.legacyWrongWordsByLevel, {});
+    return {
+      meaning: isObject(legacy) ? { ...legacy } : {},
+      dictation: {}
+    };
+  }
+
+  function getLegacyStageProgressMap() {
+    return createModeBucket(readRawJsonStorage(STORAGE_KEYS.stageProgressByModeAndLevel, {}));
+  }
+
+  function getLegacyStageStatsMap() {
+    return createModeBucket(readRawJsonStorage(STORAGE_KEYS.stageStatsByModeAndLevel, {}));
+  }
+
+  function getLegacySurvivalStatsMap() {
+    return createModeBucket(readRawJsonStorage(STORAGE_KEYS.survivalStatsByModeAndLevel, {}));
+  }
+
+  function getLegacySurvivalWrongWordMap() {
+    return createModeBucket(readRawJsonStorage(STORAGE_KEYS.survivalWrongWordsByModeAndLevel, {}));
+  }
+
+  function createProfileStoreFromLegacy() {
+    const profile = createEmptyProfile(DEFAULT_PROFILE_NAME, {
+      selectedLevel: getLegacySelectedLevel(),
+      selectedMode: getLegacySelectedMode()
+    });
+
+    profile.practice.statsByModeAndLevel = getLegacyPracticeStatsMap();
+    profile.practice.wrongWordsByModeAndLevel = getLegacyPracticeWrongWordMap();
+    profile.stage.progressByModeAndLevel = getLegacyStageProgressMap();
+    profile.stage.statsByModeAndLevel = getLegacyStageStatsMap();
+    profile.survival.statsByModeAndLevel = getLegacySurvivalStatsMap();
+    profile.survival.wrongWordsByModeAndLevel = getLegacySurvivalWrongWordMap();
+
+    return {
+      version: PROFILE_STORE_VERSION,
+      currentProfileId: profile.id,
+      profiles: {
+        [profile.id]: profile
+      }
+    };
+  }
+
+  function createFreshProfileStore() {
+    const profile = createEmptyProfile(DEFAULT_PROFILE_NAME);
+    return {
+      version: PROFILE_STORE_VERSION,
+      currentProfileId: profile.id,
+      profiles: {
+        [profile.id]: profile
+      }
+    };
+  }
+
+  function ensureProfileStore() {
+    const savedStore = normalizeProfileStore(readRawJsonStorage(STORAGE_KEYS.profileStore, null));
+
+    if (savedStore) {
+      return savedStore;
+    }
+
+    const initialStore = hasLegacyStorageData()
+      ? createProfileStoreFromLegacy()
+      : createFreshProfileStore();
+
+    writeRawJsonStorage(STORAGE_KEYS.profileStore, initialStore);
+    return initialStore;
+  }
+
+  function saveProfileStore(store) {
+    const normalizedStore = normalizeProfileStore(store);
+
+    if (!normalizedStore) {
+      throw new Error("Profile store is invalid.");
+    }
+
+    writeRawJsonStorage(STORAGE_KEYS.profileStore, normalizedStore);
+    return normalizedStore;
+  }
+
+  function dispatchProfileChange(detail) {
+    window.dispatchEvent(new CustomEvent(PROFILE_CHANGE_EVENT, {
+      detail
+    }));
+  }
+
+  function dispatchProfileUpdate(detail) {
+    window.dispatchEvent(new CustomEvent(PROFILE_UPDATE_EVENT, {
+      detail
+    }));
+  }
+
+  const PROFILE_SCOPED_STORAGE_ACCESSORS = {
+    [STORAGE_KEYS.selectedLevel]: {
+      get(profile) {
+        return profile.settings.selectedLevel;
+      },
+      set(profile, value) {
+        profile.settings.selectedLevel = normalizeLevelId(value);
+      }
+    },
+    [STORAGE_KEYS.selectedMode]: {
+      get(profile) {
+        return profile.settings.selectedMode;
+      },
+      set(profile, value) {
+        profile.settings.selectedMode = normalizeModeId(value);
+      }
+    },
+    [STORAGE_KEYS.statsByModeAndLevel]: {
+      get(profile) {
+        return profile.practice.statsByModeAndLevel;
+      },
+      set(profile, value) {
+        profile.practice.statsByModeAndLevel = createModeBucket(value);
+      }
+    },
+    [STORAGE_KEYS.wrongWordsByModeAndLevel]: {
+      get(profile) {
+        return profile.practice.wrongWordsByModeAndLevel;
+      },
+      set(profile, value) {
+        profile.practice.wrongWordsByModeAndLevel = createModeBucket(value);
+      }
+    },
+    [STORAGE_KEYS.stageProgressByModeAndLevel]: {
+      get(profile) {
+        return profile.stage.progressByModeAndLevel;
+      },
+      set(profile, value) {
+        profile.stage.progressByModeAndLevel = createModeBucket(value);
+      }
+    },
+    [STORAGE_KEYS.stageStatsByModeAndLevel]: {
+      get(profile) {
+        return profile.stage.statsByModeAndLevel;
+      },
+      set(profile, value) {
+        profile.stage.statsByModeAndLevel = createModeBucket(value);
+      }
+    },
+    [STORAGE_KEYS.survivalStatsByModeAndLevel]: {
+      get(profile) {
+        return profile.survival.statsByModeAndLevel;
+      },
+      set(profile, value) {
+        profile.survival.statsByModeAndLevel = createModeBucket(value);
+      }
+    },
+    [STORAGE_KEYS.survivalWrongWordsByModeAndLevel]: {
+      get(profile) {
+        return profile.survival.wrongWordsByModeAndLevel;
+      },
+      set(profile, value) {
+        profile.survival.wrongWordsByModeAndLevel = createModeBucket(value);
+      }
+    }
+  };
+
+  function readProfileScopedStorage(key) {
+    const accessors = PROFILE_SCOPED_STORAGE_ACCESSORS[key];
+
+    if (!accessors) {
+      return { found: false };
+    }
+
+    const store = ensureProfileStore();
+    const currentProfile = store.profiles[store.currentProfileId];
+    return {
+      found: true,
+      value: cloneValue(accessors.get(currentProfile))
+    };
+  }
+
+  function writeProfileScopedStorage(key, value) {
+    const accessors = PROFILE_SCOPED_STORAGE_ACCESSORS[key];
+
+    if (!accessors) {
+      return false;
+    }
+
+    const store = ensureProfileStore();
+    const currentProfile = store.profiles[store.currentProfileId];
+    accessors.set(currentProfile, cloneValue(value));
+    currentProfile.lastActiveAt = getNowTimestamp();
+    saveProfileStore(store);
+    return true;
+  }
+
+  function getReplacementProfileId(store, profileId) {
+    const profiles = listProfilesFromStore(store);
+    const currentIndex = profiles.findIndex((profile) => profile.id === profileId);
+
+    if (currentIndex === -1) {
+      return profiles[0] ? profiles[0].id : null;
+    }
+
+    return profiles[currentIndex + 1]
+      ? profiles[currentIndex + 1].id
+      : profiles[currentIndex - 1]
+        ? profiles[currentIndex - 1].id
+        : null;
+  }
+
+  function getProfileStore() {
+    return cloneValue(ensureProfileStore());
+  }
+
+  function getCurrentProfileId() {
+    return ensureProfileStore().currentProfileId;
+  }
+
+  function getCurrentProfile() {
+    const store = ensureProfileStore();
+    return cloneValue(store.profiles[store.currentProfileId]);
+  }
+
+  function listProfiles() {
+    const store = ensureProfileStore();
+    return cloneValue(listProfilesFromStore(store));
+  }
+
+  function createProfile(name) {
+    const normalizedName = normalizeProfileName(name, "");
+
+    if (!normalizedName) {
+      throw new Error("档案名称不能为空。");
+    }
+
+    const store = ensureProfileStore();
+    const profile = createEmptyProfile(normalizedName);
+    store.profiles[profile.id] = profile;
+    saveProfileStore(store);
+    return cloneValue(profile);
+  }
+
+  function renameProfile(profileId, name) {
+    const normalizedName = normalizeProfileName(name, "");
+
+    if (!normalizedName) {
+      throw new Error("档案名称不能为空。");
+    }
+
+    const store = ensureProfileStore();
+    const profile = store.profiles[profileId];
+
+    if (!profile) {
+      throw new Error("未找到要重命名的档案。");
+    }
+
+    const previousName = profile.name;
+    profile.name = normalizedName;
+    const savedStore = saveProfileStore(store);
+
+    if (savedStore.currentProfileId === profileId) {
+      dispatchProfileUpdate({
+        reason: "rename",
+        profileId,
+        previousName,
+        name: normalizedName
+      });
+    }
+
+    return cloneValue(profile);
+  }
+
+  function touchProfile(profileId = getCurrentProfileId()) {
+    const store = ensureProfileStore();
+    const profile = store.profiles[profileId];
+
+    if (!profile) {
+      throw new Error("未找到要更新最近使用时间的档案。");
+    }
+
+    profile.lastActiveAt = getNowTimestamp();
+    saveProfileStore(store);
+    return cloneValue(profile);
+  }
+
+  function isLastRemainingProfile(profileId) {
+    const store = ensureProfileStore();
+    const profileIds = Object.keys(store.profiles);
+
+    if (profileIds.length !== 1) {
+      return false;
+    }
+
+    if (!profileId) {
+      return true;
+    }
+
+    return profileIds[0] === profileId;
+  }
+
+  function switchProfile(profileId) {
+    const store = ensureProfileStore();
+    const targetProfile = store.profiles[profileId];
+
+    if (!targetProfile) {
+      throw new Error("未找到要切换的档案。");
+    }
+
+    const previousProfileId = store.currentProfileId;
+
+    if (previousProfileId === profileId) {
+      return touchProfile(profileId);
+    }
+
+    store.currentProfileId = profileId;
+    store.profiles[profileId].lastActiveAt = getNowTimestamp();
+    const savedStore = saveProfileStore(store);
+    dispatchProfileChange({
+      reason: "switch",
+      previousProfileId,
+      profileId: savedStore.currentProfileId
+    });
+    return cloneValue(savedStore.profiles[savedStore.currentProfileId]);
+  }
+
+  function resetProfile(profileId) {
+    const store = ensureProfileStore();
+    const profile = store.profiles[profileId];
+
+    if (!profile) {
+      throw new Error("未找到要重置的档案。");
+    }
+
+    store.profiles[profileId] = createEmptyProfile(profile.name, {
+      id: profile.id,
+      createdAt: profile.createdAt,
+      lastActiveAt: getNowTimestamp()
+    });
+
+    const savedStore = saveProfileStore(store);
+
+    if (profileId === savedStore.currentProfileId) {
+      dispatchProfileChange({
+        reason: "reset",
+        previousProfileId: profileId,
+        profileId
+      });
+    }
+
+    return cloneValue(savedStore.profiles[profileId]);
+  }
+
+  function deleteProfile(profileId) {
+    const store = ensureProfileStore();
+    const profile = store.profiles[profileId];
+
+    if (!profile) {
+      throw new Error("未找到要删除的档案。");
+    }
+
+    if (isLastRemainingProfile(profileId)) {
+      throw new Error("最后一个档案不能删除，请改用重置档案。");
+    }
+
+    const wasCurrent = store.currentProfileId === profileId;
+    const nextProfileId = wasCurrent ? getReplacementProfileId(store, profileId) : store.currentProfileId;
+
+    if (wasCurrent && !nextProfileId) {
+      throw new Error("删除当前档案失败，未找到可切换的替代档案。");
+    }
+
+    delete store.profiles[profileId];
+
+    if (wasCurrent) {
+      store.currentProfileId = nextProfileId;
+      store.profiles[nextProfileId].lastActiveAt = getNowTimestamp();
+    }
+
+    const savedStore = saveProfileStore(store);
+
+    if (wasCurrent) {
+      dispatchProfileChange({
+        reason: "delete",
+        previousProfileId: profileId,
+        profileId: savedStore.currentProfileId,
+        deletedProfileId: profileId
+      });
+    }
+
+    return {
+      deletedProfileId: profileId,
+      currentProfileId: savedStore.currentProfileId
+    };
+  }
+
+  function formatDateTime(value) {
+    if (!isValidTimestamp(value)) {
+      return "暂无";
+    }
+
+    return new Date(value).toLocaleString("zh-CN", {
+      hour12: false
+    });
+  }
 
   /**
    * 随机打乱数组顺序并返回新数组。
@@ -81,33 +707,27 @@
   }
 
   /**
-   * 从 localStorage 读取 JSON 数据，并在异常时返回兜底值。
+   * 从 localStorage 或当前档案读取 JSON 数据，并在异常时返回兜底值。
    */
   function readJsonStorage(key, fallback) {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : fallback;
-    } catch {
-      return fallback;
+    const scopedValue = readProfileScopedStorage(key);
+
+    if (scopedValue.found) {
+      return scopedValue.value;
     }
+
+    return readRawJsonStorage(key, fallback);
   }
 
   /**
-   * 把对象序列化后写入 localStorage。
+   * 把对象序列化后写入 localStorage，或写回当前档案。
    */
   function writeJsonStorage(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
-  }
+    if (writeProfileScopedStorage(key, value)) {
+      return;
+    }
 
-  /**
-   * 规范化按玩法分组的存储结构，确保 meaning 和 dictation 桶始终存在。
-   */
-  function createModeBucket(rawValue) {
-    const value = rawValue && typeof rawValue === "object" ? rawValue : {};
-    return {
-      meaning: value.meaning && typeof value.meaning === "object" ? value.meaning : {},
-      dictation: value.dictation && typeof value.dictation === "object" ? value.dictation : {}
-    };
+    writeRawJsonStorage(key, value);
   }
 
   /**
@@ -132,33 +752,32 @@
   }
 
   /**
-   * 读取本地保存的级别设置，不合法时回退到默认级别。
+   * 读取当前档案保存的级别设置，不合法时回退到默认级别。
    */
   function getStoredLevel() {
-    const storedLevel = localStorage.getItem(STORAGE_KEYS.selectedLevel);
-    return LEVEL_OPTIONS.some((option) => option.id === storedLevel) ? storedLevel : DEFAULT_LEVEL;
+    return normalizeLevelId(getCurrentProfile().settings.selectedLevel);
   }
 
   /**
-   * 读取本地保存的玩法设置，不合法时回退到默认玩法。
+   * 读取当前档案保存的玩法设置，不合法时回退到默认玩法。
    */
   function getStoredMode(modeOptions) {
-    const storedMode = localStorage.getItem(STORAGE_KEYS.selectedMode);
+    const storedMode = normalizeModeId(getCurrentProfile().settings.selectedMode);
     return Array.isArray(modeOptions) && modeOptions.some((option) => option.id === storedMode) ? storedMode : DEFAULT_MODE;
   }
 
   /**
-   * 持久化当前选中的级别。
+   * 持久化当前档案选中的级别。
    */
   function persistSelectedLevel(levelId) {
-    localStorage.setItem(STORAGE_KEYS.selectedLevel, levelId);
+    writeProfileScopedStorage(STORAGE_KEYS.selectedLevel, levelId);
   }
 
   /**
-   * 持久化当前选中的玩法。
+   * 持久化当前档案选中的玩法。
    */
   function persistSelectedMode(modeId) {
-    localStorage.setItem(STORAGE_KEYS.selectedMode, modeId);
+    writeProfileScopedStorage(STORAGE_KEYS.selectedMode, modeId);
   }
 
   /**
@@ -491,8 +1110,13 @@
 
   window.GameShared = {
     STORAGE_KEYS,
+    PROFILE_STORE_VERSION,
+    PROFILE_CHANGE_EVENT,
+    PROFILE_UPDATE_EVENT,
+    PROFILE_SWITCH_REQUEST_EVENT,
     DEFAULT_LEVEL,
     DEFAULT_MODE,
+    DEFAULT_PROFILE_NAME,
     STAGE_CONFIG,
     SURVIVAL_CONFIG,
     LEVEL_OPTIONS,
@@ -500,9 +1124,22 @@
     shuffle,
     escapeHtml,
     formatTime,
+    formatDateTime,
     readJsonStorage,
     writeJsonStorage,
     createModeBucket,
+    createEmptyProfile,
+    getProfileStore,
+    getCurrentProfileId,
+    getCurrentProfile,
+    listProfiles,
+    createProfile,
+    renameProfile,
+    deleteProfile,
+    resetProfile,
+    switchProfile,
+    isLastRemainingProfile,
+    touchProfile,
     getLevelMeta,
     getWordsForLevel,
     getWordById,
