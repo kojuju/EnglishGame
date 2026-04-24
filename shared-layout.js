@@ -146,20 +146,10 @@
               <div class="panel-header">
                 <div>
                   <h3>档案列表</h3>
-                  <p class="panel-copy">先选中一个档案，再执行切换、重命名、删除或重置。</p>
+                  <p class="panel-copy">每个档案条目都可直接切换、重命名、删除或重置；当前级别会直接显示在列表中。</p>
                 </div>
               </div>
               <div class="profile-list" id="profile-list"></div>
-            </section>
-
-            <section class="profile-panel">
-              <div class="panel-header">
-                <div>
-                  <h3>选中档案操作</h3>
-                  <p class="panel-copy">删除与重置属于危险操作，会要求你再次确认。</p>
-                </div>
-              </div>
-              <div id="profile-actions-slot"></div>
             </section>
 
             <section class="profile-panel">
@@ -197,8 +187,7 @@
       settingsDisabled: false,
       previousFocus: null,
       activeModal: null,
-      selectedProfileId: currentProfile.id,
-      isRenamingProfile: false,
+      renamingProfileId: null,
       renameProfileName: "",
       createProfileName: "",
       profileNotice: { type: "", text: "" }
@@ -221,18 +210,18 @@
       closeProfileButton: document.getElementById("close-profile-button"),
       profileSummarySlot: document.getElementById("profile-summary-slot"),
       profileList: document.getElementById("profile-list"),
-      profileActionsSlot: document.getElementById("profile-actions-slot"),
       createProfileInput: document.getElementById("create-profile-input"),
       createProfileButton: document.getElementById("create-profile-button"),
       profileModalFeedback: document.getElementById("profile-modal-feedback")
     };
 
-    function getSelectedProfile(profiles) {
-      return profiles.find((profile) => profile.id === state.selectedProfileId) || null;
-    }
-
     function clearProfileNotice() {
       state.profileNotice = { type: "", text: "" };
+    }
+
+    function clearRenameState() {
+      state.renamingProfileId = null;
+      state.renameProfileName = "";
     }
 
     function setProfileNotice(text, type = "error") {
@@ -274,17 +263,6 @@
       });
     }
 
-    function syncSelectedProfile(preserveSelection = true) {
-      const profiles = listProfiles();
-      const current = getCurrentProfile();
-
-      if (!preserveSelection || !profiles.some((profile) => profile.id === state.selectedProfileId)) {
-        state.selectedProfileId = current.id;
-        state.isRenamingProfile = false;
-        state.renameProfileName = "";
-      }
-    }
-
     function renderProfileSummary(current) {
       const levelLabel = getLevelMeta(current.settings.selectedLevel).label;
       elements.profileSummarySlot.innerHTML = `
@@ -309,30 +287,107 @@
       elements.profileList.innerHTML = "";
 
       profiles.forEach((profile) => {
-        const button = document.createElement("button");
-        const isSelected = profile.id === state.selectedProfileId;
         const isCurrent = profile.id === currentProfileId;
-
-        button.type = "button";
-        button.className = `profile-list-item${isSelected ? " is-selected" : ""}${isCurrent ? " is-current" : ""}`;
-        button.innerHTML = `
+        const isEditing = state.renamingProfileId === profile.id;
+        const showReset = isLastRemainingProfile(profile.id);
+        const levelLabel = getLevelMeta(profile.settings.selectedLevel).label;
+        const item = document.createElement("article");
+        item.className = `profile-list-item${isCurrent ? " is-current" : ""}`;
+        item.innerHTML = `
           <div class="profile-list-header">
             <strong>${escapeHtml(profile.name)}</strong>
             <span class="profile-list-tags">
               ${isCurrent ? '<span class="profile-pill">当前档案</span>' : ""}
-              ${isSelected ? '<span class="profile-pill is-selected">已选中</span>' : ""}
             </span>
           </div>
-          <p class="profile-list-meta">最近使用：${escapeHtml(formatDateTime(profile.lastActiveAt))}</p>
+          <div class="profile-item-footer">
+            <p class="profile-list-meta">当前级别：${escapeHtml(levelLabel)} · 最近使用：${escapeHtml(formatDateTime(profile.lastActiveAt))}</p>
+            <div class="profile-inline-actions">
+              ${isCurrent ? "" : '<button class="primary-button compact-button mini-button" data-action="switch" type="button">切换</button>'}
+              <button class="secondary-button compact-button mini-button" data-action="rename" type="button">${isEditing ? "重新编辑" : "重命名"}</button>
+              <button class="secondary-button compact-button mini-button danger-button" data-action="${showReset ? "reset" : "delete"}" type="button">${showReset ? "重置" : "删除"}</button>
+            </div>
+          </div>
+          ${isEditing ? `
+            <div class="profile-rename-box">
+              <label class="profile-input-label" for="rename-profile-input-${escapeHtml(profile.id)}">新的档案名称</label>
+              <div class="profile-create-row">
+                <input class="profile-name-input" id="rename-profile-input-${escapeHtml(profile.id)}" type="text" maxlength="24" autocomplete="off" value="${escapeHtml(state.renameProfileName)}">
+                <button class="primary-button" data-action="save-rename" type="button">保存名称</button>
+              </div>
+              <div class="action-row profile-action-row">
+                <button class="secondary-button compact-button mini-button" data-action="cancel-rename" type="button">取消</button>
+              </div>
+            </div>
+          ` : ""}
         `;
-        button.addEventListener("click", () => {
-          state.selectedProfileId = profile.id;
-          state.isRenamingProfile = false;
-          state.renameProfileName = "";
+
+        const switchButton = item.querySelector('[data-action="switch"]');
+        const renameButton = item.querySelector('[data-action="rename"]');
+        const deleteButton = item.querySelector('[data-action="delete"]');
+        const resetButton = item.querySelector('[data-action="reset"]');
+        const saveRenameButton = item.querySelector('[data-action="save-rename"]');
+        const cancelRenameButton = item.querySelector('[data-action="cancel-rename"]');
+        const renameInput = item.querySelector(".profile-name-input");
+
+        if (switchButton) {
+          switchButton.addEventListener("click", () => {
+            handleGuardedAction({
+              type: "switch-profile",
+              profileId: profile.id,
+              execute() {
+                closeProfileModal(false);
+                switchProfile(profile.id);
+              }
+            });
+          });
+        }
+
+        renameButton.addEventListener("click", () => {
+          state.renamingProfileId = profile.id;
+          state.renameProfileName = profile.name;
           clearProfileNotice();
           renderProfileModalContent();
         });
-        elements.profileList.appendChild(button);
+
+        if (deleteButton) {
+          deleteButton.addEventListener("click", () => {
+            handleDeleteProfile(profile, isCurrent);
+          });
+        }
+
+        if (resetButton) {
+          resetButton.addEventListener("click", () => {
+            handleResetProfile(profile, isCurrent);
+          });
+        }
+
+        if (renameInput) {
+          renameInput.addEventListener("input", (event) => {
+            state.renameProfileName = event.target.value;
+          });
+          renameInput.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              handleRenameProfile(profile);
+            }
+          });
+          window.setTimeout(() => renameInput.focus(), 0);
+        }
+
+        if (saveRenameButton) {
+          saveRenameButton.addEventListener("click", () => handleRenameProfile(profile));
+        }
+
+        if (cancelRenameButton) {
+          cancelRenameButton.addEventListener("click", () => {
+            clearRenameState();
+            clearProfileNotice();
+            renderProfileModalContent();
+          });
+        }
+
+        elements.profileList.appendChild(item);
       });
     }
 
@@ -366,7 +421,7 @@
 
       try {
         const profile = createProfile(elements.createProfileInput.value);
-        state.selectedProfileId = profile.id;
+        clearRenameState();
         state.createProfileName = "";
         elements.createProfileInput.value = "";
         renderProfileModalContent();
@@ -381,8 +436,7 @@
 
       try {
         const renamed = renameProfile(profile.id, state.renameProfileName);
-        state.isRenamingProfile = false;
-        state.renameProfileName = "";
+        clearRenameState();
         syncSidebarMeta();
         renderProfileModalContent();
         setProfileNotice(`已将档案重命名为「${renamed.name}」。`, "success");
@@ -414,7 +468,9 @@
 
       try {
         deleteProfile(profile.id);
-        syncSelectedProfile(false);
+        if (state.renamingProfileId === profile.id) {
+          clearRenameState();
+        }
         renderProfileModalContent();
         setProfileNotice(`已删除档案「${profile.name}」。`, "success");
       } catch (error) {
@@ -445,6 +501,9 @@
 
       try {
         resetProfile(profile.id);
+        if (state.renamingProfileId === profile.id) {
+          clearRenameState();
+        }
         renderProfileModalContent();
         setProfileNotice(`已重置档案「${profile.name}」。`, "success");
       } catch (error) {
@@ -452,117 +511,11 @@
       }
     }
 
-    function renderProfileActions(profiles, current) {
-      const selected = getSelectedProfile(profiles);
-
-      if (!selected) {
-        elements.profileActionsSlot.innerHTML = '<p class="empty-state">请先在列表中选中一个档案。</p>';
-        return;
-      }
-
-      const isCurrent = selected.id === current.id;
-      const showReset = isLastRemainingProfile(selected.id);
-      const levelLabel = getLevelMeta(selected.settings.selectedLevel).label;
-
-      elements.profileActionsSlot.innerHTML = `
-        <div class="profile-selection-card${isCurrent ? " is-current" : ""}">
-          <div class="profile-selection-header">
-            <strong>${escapeHtml(selected.name)}</strong>
-            <span class="profile-list-tags">
-              ${isCurrent ? '<span class="profile-pill">当前档案</span>' : ""}
-            </span>
-          </div>
-          <p class="profile-list-meta">当前级别：${escapeHtml(levelLabel)} · 最近使用：${escapeHtml(formatDateTime(selected.lastActiveAt))}</p>
-        </div>
-        <div class="action-row profile-action-row">
-          ${isCurrent ? "" : '<button class="primary-button" id="switch-profile-button" type="button">切换到此档案</button>'}
-          <button class="secondary-button" id="rename-profile-button" type="button">${state.isRenamingProfile ? "重新编辑名称" : "重命名档案"}</button>
-          <button class="secondary-button danger-button" id="danger-profile-button" type="button">${showReset ? "重置档案" : "删除档案"}</button>
-        </div>
-        ${state.isRenamingProfile ? `
-          <div class="profile-rename-box">
-            <label class="profile-input-label" for="rename-profile-input">新的档案名称</label>
-            <div class="profile-create-row">
-              <input class="profile-name-input" id="rename-profile-input" type="text" maxlength="24" autocomplete="off" value="${escapeHtml(state.renameProfileName)}">
-              <button class="primary-button" id="save-rename-profile-button" type="button">保存名称</button>
-            </div>
-            <div class="action-row profile-action-row">
-              <button class="secondary-button" id="cancel-rename-profile-button" type="button">取消</button>
-            </div>
-          </div>
-        ` : ""}
-      `;
-
-      const switchButton = document.getElementById("switch-profile-button");
-      const renameButton = document.getElementById("rename-profile-button");
-      const dangerButton = document.getElementById("danger-profile-button");
-      const renameInput = document.getElementById("rename-profile-input");
-      const saveRenameButton = document.getElementById("save-rename-profile-button");
-      const cancelRenameButton = document.getElementById("cancel-rename-profile-button");
-
-      if (switchButton) {
-        switchButton.addEventListener("click", () => {
-          handleGuardedAction({
-            type: "switch-profile",
-            profileId: selected.id,
-            execute() {
-              closeProfileModal(false);
-              switchProfile(selected.id);
-            }
-          });
-        });
-      }
-
-      renameButton.addEventListener("click", () => {
-        state.isRenamingProfile = true;
-        state.renameProfileName = selected.name;
-        clearProfileNotice();
-        renderProfileModalContent();
-      });
-
-      dangerButton.addEventListener("click", () => {
-        if (showReset) {
-          handleResetProfile(selected, isCurrent);
-          return;
-        }
-
-        handleDeleteProfile(selected, isCurrent);
-      });
-
-      if (renameInput) {
-        renameInput.addEventListener("input", (event) => {
-          state.renameProfileName = event.target.value;
-        });
-        renameInput.addEventListener("keydown", (event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            handleRenameProfile(selected);
-          }
-        });
-        window.setTimeout(() => renameInput.focus(), 0);
-      }
-
-      if (saveRenameButton) {
-        saveRenameButton.addEventListener("click", () => handleRenameProfile(selected));
-      }
-
-      if (cancelRenameButton) {
-        cancelRenameButton.addEventListener("click", () => {
-          state.isRenamingProfile = false;
-          state.renameProfileName = "";
-          clearProfileNotice();
-          renderProfileModalContent();
-        });
-      }
-    }
-
     function renderProfileModalContent() {
-      syncSelectedProfile(true);
       const current = getCurrentProfile();
       const profiles = listProfiles();
       renderProfileSummary(current);
       renderProfileList(profiles, current.id);
-      renderProfileActions(profiles, current);
       renderProfileFeedback();
       elements.createProfileInput.value = state.createProfileName;
     }
@@ -630,7 +583,6 @@
 
     function openProfileModal() {
       clearProfileNotice();
-      syncSelectedProfile(false);
       renderProfileModalContent();
       openModal("profiles");
       elements.profileModal.classList.remove("is-hidden");
@@ -664,7 +616,10 @@
 
     function handleProfileChange() {
       syncSidebarMeta();
-      syncSelectedProfile(false);
+
+      if (state.activeModal !== "profiles") {
+        clearRenameState();
+      }
 
       if (state.activeModal === "settings") {
         state.pendingLevel = state.selectedLevel;

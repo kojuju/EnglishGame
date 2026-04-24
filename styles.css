@@ -1034,8 +1034,7 @@ button {
   margin-top: 18px;
 }
 
-.profile-list-item,
-.profile-selection-card {
+.profile-list-item {
   width: 100%;
   padding: 16px 18px;
   text-align: left;
@@ -1053,14 +1052,12 @@ button {
   transform: translateY(-2px);
 }
 
-.profile-list-item.is-selected,
-.profile-selection-card.is-current {
+.profile-list-item.is-current {
   border-color: rgba(56, 189, 248, 0.7);
   background: rgba(14, 165, 233, 0.16);
 }
 
-.profile-list-header,
-.profile-selection-header {
+.profile-list-header {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -1084,15 +1081,32 @@ button {
   font-weight: 700;
 }
 
-.profile-pill.is-selected {
-  background: rgba(251, 191, 36, 0.14);
-  color: #fde68a;
-}
-
 .profile-list-meta {
-  margin: 12px 0 0;
+  margin: 0;
   color: var(--text-soft);
   line-height: 1.6;
+}
+
+.profile-item-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.profile-inline-actions {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.mini-button {
+  min-width: auto;
+  padding: 8px 12px;
+  font-size: 0.88rem;
+  line-height: 1.2;
 }
 
 .profile-action-row {
@@ -1211,6 +1225,10 @@ button {
     width: 100%;
   }
 
+  .mini-button {
+    width: auto;
+  }
+
   .dictation-input-row {
     flex-direction: column;
   }
@@ -1258,8 +1276,16 @@ button {
     padding: 18px;
   }
 
-  .profile-list-header,
-  .profile-selection-header {
+  .profile-item-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-inline-actions {
+    justify-content: flex-start;
+  }
+
+  .profile-list-header {
     flex-direction: column;
     align-items: flex-start;
   }
