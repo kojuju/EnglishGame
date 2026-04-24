@@ -16,6 +16,8 @@ const {
 } = window.GameShared;
 
 const SURVIVAL_MODE = "meaning";
+const survivalType = window.GameTypeRegistry.mustGet(SURVIVAL_MODE);
+const survivalStrategy = survivalType.survival;
 
 const state = {
   currentScreen: "home",
@@ -90,6 +92,29 @@ const elements = {
 
 const shell = window.__gameShell;
 
+function createSurvivalStrategyContext() {
+  return {
+    state,
+    elements,
+    levelId: state.selectedLevel,
+    helpers: {
+      getDifficultyLabel,
+      clearFeedback,
+      updateStatusBar,
+      handlePrimaryAction,
+      setOptionStates,
+      addWrongWord,
+      clearFeedbackTimeout,
+      moveToNextQuestion,
+      endGame,
+      createReviewItem,
+      getLevelLabel(levelId) {
+        return getLevelMeta(levelId).label;
+      }
+    }
+  };
+}
+
 function setSettingsDisabled(disabled) {
   if (shell && typeof shell.setSettingsDisabled === "function") {
     shell.setSettingsDisabled(disabled);
@@ -162,22 +187,17 @@ function showScreen(screenName) {
 function updateLevelLabels() {
   const levelMeta = getLevelMeta(state.selectedLevel);
   elements.currentLevelChip.textContent = `当前级别：${levelMeta.label}`;
-  elements.currentLevelBadge.textContent = `当前玩法：词义生存 · 级别：${levelMeta.label}`;
+  elements.currentLevelBadge.textContent = `当前玩法：${survivalType.label}生存 · 级别：${levelMeta.label}`;
   elements.pageTip.textContent = `${levelMeta.label} 当前采用不限题量、答错即结束的词义生存规则，每局都会重新混淆题目和选项。`;
 }
 
 function updateStatusBar() {
-  const bestStats = getSurvivalStats(SURVIVAL_MODE, state.selectedLevel);
-  elements.questionProgress.textContent = `第 ${state.currentIndex + 1} 题`;
-  elements.scoreValue.textContent = String(state.score);
-  elements.correctValue.textContent = String(state.correctCount);
-  elements.bestRecordValue.textContent = String(bestStats.bestStreak);
-  elements.accuracyValue.textContent = `${getAccuracy()}%`;
+  survivalStrategy.updateStatusBar(createSurvivalStrategyContext());
 }
 
 function clearFeedback() {
   elements.feedbackBox.className = "feedback-box";
-  elements.feedbackBox.textContent = "当前局只要答错 1 题就会结束，先稳住再冲纪录。";
+  elements.feedbackBox.textContent = survivalStrategy.getDefaultFeedback(createSurvivalStrategyContext());
 }
 
 function clearFeedbackTimeout() {
@@ -228,8 +248,8 @@ function refillQuestionQueue() {
 function trackRecentWord(wordId) {
   state.recentWordIds.push(wordId);
 
-  if (state.recentWordIds.length > SURVIVAL_CONFIG.meaning.recentWordWindowSize) {
-    state.recentWordIds = state.recentWordIds.slice(-SURVIVAL_CONFIG.meaning.recentWordWindowSize);
+  if (state.recentWordIds.length > survivalStrategy.config.recentWordWindowSize) {
+    state.recentWordIds = state.recentWordIds.slice(-survivalStrategy.config.recentWordWindowSize);
   }
 }
 
@@ -253,9 +273,11 @@ function getNextQuestion() {
   }
 
   const previousOptions = state.latestOptionMap[word.id];
-  const question = createMeaningQuestion(word, state.levelWords, {
-    distractorPool: state.levelWords,
-    excludedOptions: previousOptions
+  const question = survivalStrategy.buildQuestion({
+    ...createSurvivalStrategyContext(),
+    word,
+    levelWords: state.levelWords,
+    previousOptions
   });
 
   state.latestOptionMap[word.id] = [...question.options];
@@ -264,29 +286,11 @@ function getNextQuestion() {
 }
 
 function renderQuestion() {
-  if (!state.currentQuestion) {
-    return;
-  }
+  survivalStrategy.renderQuestion(createSurvivalStrategyContext());
+}
 
-  elements.gameTitle.textContent = "词义生存中";
-  elements.posTag.textContent = state.currentQuestion.partOfSpeech;
-  elements.difficultyTag.textContent = getDifficultyLabel(state.currentQuestion.difficulty);
-  elements.questionWord.textContent = state.currentQuestion.word;
-  elements.questionPhonetic.textContent = state.currentQuestion.phonetic || "";
-  elements.optionsGrid.innerHTML = "";
-
-  state.currentQuestion.options.forEach((option, index) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "option-button";
-    button.dataset.option = option;
-    button.innerHTML = `<strong>${index + 1}</strong>${escapeHtml(option)}`;
-    button.addEventListener("click", () => handleAnswer(option));
-    elements.optionsGrid.appendChild(button);
-  });
-
-  clearFeedback();
-  updateStatusBar();
+function handlePrimaryAction(payload = {}) {
+  survivalStrategy.handleAnswer(createSurvivalStrategyContext(), payload);
 }
 
 function updateHomeStats() {
@@ -316,68 +320,11 @@ function updateHomeStats() {
 }
 
 function renderResult() {
-  const result = state.latestResult;
-
-  if (!result) {
-    return;
-  }
-
-  elements.resultStreak.textContent = String(result.correctCount);
-  elements.resultAnswered.textContent = String(result.answeredCount);
-  elements.resultAccuracy.textContent = `${result.accuracy}%`;
-  elements.resultScore.textContent = String(result.score);
-  elements.resultBestStreak.textContent = String(result.bestStreak);
-  elements.resultRecordStatus.textContent = result.isNewRecord ? "已刷新" : "未刷新";
-  elements.resultSummary.textContent = result.isNewRecord
-    ? `新纪录！你在 ${getLevelMeta(state.selectedLevel).label} 级别下已经连续答对 ${result.correctCount} 题。`
-    : result.correctCount >= 10
-      ? `这局已经顶到 ${result.correctCount} 题，离最佳纪录还差一点，再来一局。`
-      : "先把前几题答稳，再慢慢把纪录往上推。";
-  elements.resultReviewList.innerHTML = "";
-  elements.wrongCount.textContent = `${result.wrongWords.length} 个`;
-
-  if (result.wrongWords.length === 0) {
-    elements.resultReviewEmpty.classList.remove("is-hidden");
-    return;
-  }
-
-  elements.resultReviewEmpty.classList.add("is-hidden");
-  result.wrongWords.forEach((word) => {
-    elements.resultReviewList.appendChild(createReviewItem(word));
-  });
+  survivalStrategy.renderResult(createSurvivalStrategyContext());
 }
 
 function saveRoundSummary() {
-  const accuracy = getAccuracy();
-  const statsMap = getSavedSurvivalStatsMap();
-  const wrongWordMap = getSavedSurvivalWrongWordMap();
-  const currentStats = getSurvivalStats(SURVIVAL_MODE, state.selectedLevel);
-  const bestStreak = Math.max(state.correctCount, currentStats.bestStreak);
-  const bestScore = Math.max(state.score, currentStats.bestScore);
-
-  if (!statsMap[SURVIVAL_MODE]) {
-    statsMap[SURVIVAL_MODE] = {};
-  }
-
-  if (!wrongWordMap[SURVIVAL_MODE]) {
-    wrongWordMap[SURVIVAL_MODE] = {};
-  }
-
-  statsMap[SURVIVAL_MODE][state.selectedLevel] = {
-    bestStreak,
-    bestScore,
-    latestAccuracy: accuracy,
-    latestAnsweredCount: state.answeredCount
-  };
-  wrongWordMap[SURVIVAL_MODE][state.selectedLevel] = state.wrongWords.map((word) => word.id);
-
-  writeJsonStorage(STORAGE_KEYS.survivalStatsByModeAndLevel, statsMap);
-  writeJsonStorage(STORAGE_KEYS.survivalWrongWordsByModeAndLevel, wrongWordMap);
-
-  return {
-    bestStreak,
-    isNewRecord: state.correctCount > currentStats.bestStreak
-  };
+  return survivalStrategy.saveStats(createSurvivalStrategyContext());
 }
 
 function endGame() {
@@ -411,37 +358,7 @@ function moveToNextQuestion() {
 }
 
 function handleAnswer(selectedOption) {
-  if (state.lockInput || state.roundFinished || !state.currentQuestion) {
-    return;
-  }
-
-  state.lockInput = true;
-  state.answeredCount += 1;
-  const isCorrect = selectedOption === state.currentQuestion.meaning;
-
-  setOptionStates(selectedOption, state.currentQuestion.meaning);
-
-  if (isCorrect) {
-    state.correctCount += 1;
-    state.score += SURVIVAL_CONFIG.meaning.baseScore;
-    elements.feedbackBox.className = "feedback-box is-success";
-    elements.feedbackBox.textContent = `答对了！${state.currentQuestion.word} = ${state.currentQuestion.meaning}`;
-    updateStatusBar();
-    clearFeedbackTimeout();
-    state.feedbackTimeoutId = window.setTimeout(() => {
-      moveToNextQuestion();
-    }, SURVIVAL_CONFIG.meaning.feedbackDelayMs);
-    return;
-  }
-
-  addWrongWord(state.currentQuestion);
-  elements.feedbackBox.className = "feedback-box is-error";
-  elements.feedbackBox.textContent = `答错了，本局结束。正确答案是「${state.currentQuestion.meaning}」`;
-  updateStatusBar();
-  clearFeedbackTimeout();
-  state.feedbackTimeoutId = window.setTimeout(() => {
-    endGame();
-  }, SURVIVAL_CONFIG.meaning.feedbackDelayMs);
+  handlePrimaryAction({ selectedOption });
 }
 
 function prepareRoundState() {
@@ -519,18 +436,7 @@ function bindEvents() {
     if (state.currentScreen !== "game" || state.lockInput || state.roundFinished) {
       return;
     }
-
-    const number = Number(event.key);
-
-    if (number < 1 || number > 4) {
-      return;
-    }
-
-    const button = elements.optionsGrid.querySelectorAll(".option-button")[number - 1];
-
-    if (button) {
-      button.click();
-    }
+    survivalStrategy.handleKeydown(createSurvivalStrategyContext(), event);
   });
 
   window.addEventListener("english-game:level-change", handleSharedLevelChange);
